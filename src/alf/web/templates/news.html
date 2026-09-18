@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ALF — News</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='news.css') }}"
+    >
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='dialog.css') }}"
+    >
+</head>
+<body>
+    <main>
+        <div class="top">
+            <a class="brand" href="{{ url_for('home') }}">ALF</a>
+        </div>
+        <header class="intro">
+            <div class="illustration">◉</div>
+            <h1>News</h1>
+            <p>Follow and explore the news.</p>
+        </header>
+        <section class="news-workspace">
+            <aside class="news-library">
+                <h2>News Library</h2>
+
+                {% for subject in subjects %}
+                    <div
+                        class="news-subject"
+                        data-subject-id="{{ subject['id'] }}"
+                    >
+                        <div class="news-subject-header">
+                            <h3>{{ subject['name'] }}</h3>
+
+                            {% if subject['name'] != 'Uncategorised' %}
+                                <button
+                                    type="button"
+                                    class="news-subject-menu"
+                                    aria-label="Subject options"
+                                >
+                                    ⋮
+                                </button>
+                            {% endif %}
+                        </div>
+
+                        <div class="news-list">
+                            {% for feed in feeds %}
+                                {% if feed['subject'] == subject['name'] %}
+                                    <button
+                                        type="button"
+                                        class="news-item"
+                                        data-feed-id="{{ feed['id'] }}"
+                                    >
+                                        <span>{{ feed['title'] }}</span>
+                                    </button>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <div class="news-delete">
+                    <div id="news-delete-target">
+                        Delete
+                    </div>
+                </div>
+                <div class="news-library-actions">
+                    <button type="button" id="new-news-subject">
+                        ＋ New subject
+                    </button>
+
+                    <button type="button" id="refresh-news">
+                        Refresh news
+                    </button>
+
+                    <label for="news-article-limit">
+                        Articles:
+                        <select id="news-article-limit">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </label>
+                </div>
+            </aside>
+
+            <section class="news-reader">
+                <div id="news-empty" class="news-empty">
+                    Choose a subject, or create a new one.
+                </div>
+            </section>
+        </section>
+
+        <script src="{{ url_for('static', filename='dialog.js') }}"></script>
+        <script src="{{ url_for('static', filename='news.js') }}"></script>
+    </main>
+</body>
+</html>
+

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ALF — Question</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <style>
+        main {
+            padding: 25px 0 50px;
+        }
+
+        .top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .brand {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            color: inherit;
+            text-decoration: none;
+        }
+
+
+        .intro {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .illustration {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 2.2rem;
+            font-weight: 500;
+        }
+
+        .intro p {
+            margin: 0;
+            color: #aebdca;
+        }
+
+        .workspace {
+            padding: 35px;
+            border-radius: 28px;
+            background: #2b3948;
+            border: 1px solid #3b4b5b;
+            box-shadow: 0 12px 35px rgba(10, 18, 28, 0.18);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #aebdca;
+        }
+
+        input[type="text"] {
+            display: block;
+            width: 100%;
+            padding: 18px;
+            border: 1px solid #46596b;
+            border-radius: 16px;
+            background: #253341;
+            color: #edf1f3;
+            font: inherit;
+            font-size: 1rem;
+            line-height: 1.5;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: #b9cdd1;
+            box-shadow: 0 0 0 3px rgba(185, 205, 209, 0.25);
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin-top: 18px;
+        }
+
+        .detail-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            color: #aebdca;
+        }
+
+        .detail-option input {
+            width: 16px;
+            height: 16px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 14px;
+            padding: 12px 24px;
+            background: #34495a;
+            color: #f1f5f7;
+            font: inherit;
+            cursor: pointer;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(10, 18, 28, 0.28);
+        }
+
+        button:hover {
+            background: #88a8ba;
+        }
+
+        .response {
+            margin-top: 30px;
+            padding-top: 28px;
+            border-top: 1px solid #3b4b5b;
+        }
+
+        .status {
+            margin-bottom: 18px;
+            font-size: 0.9rem;
+            color: #aebdca;
+        }
+
+        .answer {
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .source {
+            margin-top: 24px;
+            font-size: 0.85rem;
+            color: #aebdca;
+        }
+
+        @media (max-width: 650px) {
+            main {
+                padding-top: 35px;
+            }
+
+            .workspace {
+                padding: 24px;
+            }
+
+            .controls {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="top">
+            <a class="brand" href="{{ url_for('home') }}">ALF</a>
+        </div>
+        <header class="intro">
+            <div class="illustration">☁</div>
+            <h1>Question</h1>
+            <p>Ask ALF something and explore the answer.</p>
+        </header>
+        <section class="workspace">
+            <form method="post" id="question-form">
+                <label for="question">What would you like to ask?</label>
+
+                <input
+                    id="question"
+                    name="question"
+                    type="text"
+                    value="{{ question }}"
+                    placeholder="Ask ALF a question."
+                    required
+                >
+
+                <div class="controls">
+                    <label class="detail-option">
+                        <input
+                            type="checkbox"
+                            name="verbose"
+                            {% if verbose %}checked{% endif %}
+                        >
+                        Detailed answer
+                    </label>
+
+                    <button type="submit" id="ask-button">Ask ALF</button>
+                </div>
+            </form>
+
+            <div class="response">
+                <div class="status" id="question-status">
+                    Status: {{ status }}
+                </div>
+
+                <div class="answer">
+                    {{ answer }}
+                </div>
+
+                <div class="source">
+                    Source: {{ source }}
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document
+            .querySelector("#question-form")
+            .addEventListener("submit", function () {
+                const status = document.querySelector("#question-status");
+                const button = document.querySelector("#ask-button");
+
+                status.textContent = "Status: Asking…";
+                button.disabled = true;
+
+                requestAnimationFrame(() => {
+                    this.submit();
+                });
+            });
+    </script>
+</body>
+</html>

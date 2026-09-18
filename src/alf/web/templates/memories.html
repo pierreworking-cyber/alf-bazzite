@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ALF — Memories</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='dialog.css') }}"
+    >
+    <style>
+        main {
+            padding: 25px 0 50px;
+        }
+
+        .top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .brand {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            color: inherit;
+            text-decoration: none;
+        }
+
+
+        .intro {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .illustration {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 2.2rem;
+            font-weight: 500;
+        }
+
+        .intro p {
+            margin: 0;
+            color: #aebdca;
+        }
+
+        .memories-workspace {
+            display: grid;
+            grid-template-columns: 55% 45%;
+            min-height: 430px;
+            border-radius: 28px;
+            background: #2b3948;
+            border: 1px solid #3b4b5b;
+            box-shadow: 0 12px 35px rgba(10, 18, 28, 0.18);
+            overflow: hidden;
+        }
+
+        .memories-list {
+            padding: 25px;
+            border-right: 1px solid #3b4b5b;
+        }
+
+        .memories-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            color: #aebdca;
+            font-size: 0.9rem;
+        }
+
+        .memories-filter input[type="search"] {
+            width: 240px;
+            height: 32px;
+            padding: 5px 9px;
+            border: 1px solid #46596b;
+            border-radius: 6px;
+            background: #25313e;
+            color: #edf1f3;
+            font: inherit;
+            box-sizing: border-box;
+        }
+
+        .memories-filter input[type="search"]:focus {
+            outline: none;
+            border-color: #6d8ca8;
+        }
+
+        .memories-filter select {
+            height: 32px;
+            padding: 5px 28px 5px 9px;
+            border: 1px solid #46596b;
+            border-radius: 6px;
+            background: #25313e;
+            color: #edf1f3;
+            font: inherit;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .memories-filter select:focus {
+            outline: none;
+            border-color: #6d8ca8;
+        }
+
+        .memories-filter input[type="checkbox"] {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            border: 1px solid #596d80;
+            border-radius: 4px;
+            background: #25313e;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .memories-filter input[type="checkbox"]:checked {
+            background: #5f7f9c;
+            border-color: #6d8ca8;
+        }
+
+        .memories-filter input[type="checkbox"]:checked::after {
+            content: "✓";
+            display: block;
+            color: #edf1f3;
+            font-size: 12px;
+            line-height: 14px;
+            text-align: center;
+        }
+
+        .memories-filter input[type="checkbox"]:focus-visible {
+            outline: 2px solid #6d8ca8;
+            outline-offset: 2px;
+        }
+
+        .memory-expand,
+        .memory-rollup {
+            margin-top: 8px;
+            padding: 4px 9px;
+            border: 1px solid #46596b;
+            border-radius: 5px;
+            background: #25313e;
+            color: #aebdca;
+            font: inherit;
+            font-size: 0.82rem;
+            cursor: pointer;
+        }
+
+        .memory-expand:hover,
+        .memory-rollup:hover {
+            background: #34495a;
+            color: #edf1f3;
+            border-color: #596d80;
+        }
+
+        .memory-expand:focus-visible,
+        .memory-rollup:focus-visible {
+            outline: 2px solid #6d8ca8;
+            outline-offset: 2px;
+        }
+
+        .memories-filter + button[type="submit"] {
+            padding: 5px 12px;
+            border: 1px solid #46596b;
+            border-radius: 6px;
+            background: #25313e;
+            color: #aebdca;
+            font: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .memories-filter + button[type="submit"]:hover {
+            background: #34495a;
+            color: #edf1f3;
+            border-color: #596d80;
+        }
+
+        .memories-filter + button[type="submit"]:focus-visible {
+            outline: 2px solid #6d8ca8;
+            outline-offset: 2px;
+        }
+
+        .memory-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .memory-taxonomy {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #3b4b5b;
+        }
+
+        .memory-taxonomy h2 {
+            margin: 0 0 12px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #aebdca;
+        }
+
+        .memory-taxonomy ul {
+            margin: 0;
+            padding-left: 18px;
+            list-style: none;
+        }
+
+        .memory-taxonomy > ul {
+            padding-left: 0;
+        }
+
+        .memory-taxonomy li {
+            margin: 2px 0;
+        }
+
+        .memory-taxonomy a {
+            display: block;
+            padding: 5px 8px;
+            border-radius: 7px;
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .memory-taxonomy a:hover {
+            background: #34495a;
+        }
+
+        .memory-taxonomy a.selected {
+            background: #34495a;
+            color: #edf1f3;
+        }
+
+        .memory-taxonomy-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .memory-taxonomy-header a {
+            flex: 1;
+        }
+
+        .memory-category-collapse {
+            width: 22px;
+            padding: 3px 0;
+            border: 0;
+            background: transparent;
+            color: #aebdca;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .memory-category-collapse:hover {
+            color: #edf1f3;
+        }
+
+        .memory-category-menu {
+            padding: 3px 7px;
+            border: 0;
+            border-radius: 5px;
+            background: transparent;
+            color: #aebdca;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .memory-category-menu:hover {
+            background: #34495a;
+            color: #edf1f3;
+        }
+
+        .memory-category-actions {
+            margin: -2px 0 6px;
+            padding: 6px;
+            border: 1px solid #46596b;
+            border-radius: 8px;
+            background: #25313e;
+            box-shadow: 0 8px 20px rgba(10, 18, 28, 0.25);
+            display: flex;
+            gap: 4px;
+        }
+
+        .memory-category-actions button {
+            padding: 5px 8px;
+            border: 0;
+            border-radius: 5px;
+            background: transparent;
+            color: #aebdca;
+            font: inherit;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .memory-category-actions button:hover {
+            background: #34495a;
+            color: #edf1f3;
+        }
+
+        .memory-new-category {
+            margin-top: 10px;
+            padding: 6px 9px;
+            border: 1px solid #46596b;
+            border-radius: 6px;
+            background: transparent;
+            color: #aebdca;
+            font: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .memory-new-category:hover {
+            background: #34495a;
+            color: #edf1f3;
+        }
+
+        .memory {
+            display: block;
+            padding: 10px 12px;
+            border-radius: 10px;
+            color: inherit;
+            text-decoration: none;
+            line-height: 1.45;
+        }
+
+        .memory:hover {
+            background: #34495a;
+        }
+
+        .memory-archived {
+            opacity: 0.55;
+        }
+
+        .memory-id {
+            color: #aebdca;
+            font-size: 0.85rem;
+        }
+
+        .memory-category {
+            margin-left: 8px;
+            color: #aebdca;
+            font-size: 0.85rem;
+        }
+
+        .memory-taxonomy-tag {
+            margin-left: 10px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: #34495a;
+            color: #c5d0d9;
+            font-size: 0.78rem;
+        }
+
+        .memory-content {
+            margin-top: 3px;
+        }
+
+        .memory-detail {
+            padding: 30px;
+        }
+
+        .memory-detail h2 {
+            margin: 0 0 22px;
+            font-size: 1.15rem;
+            font-weight: 500;
+        }
+
+        .memory-meta {
+            margin-bottom: 24px;
+            color: #aebdca;
+            font-size: 0.9rem;
+        }
+
+        .memory-text {
+            line-height: 1.6;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+        #memory-editor {
+            display: block;
+            width: 100%;
+            min-height: 180px;
+            padding: 18px;
+            border: 1px solid #46596b;
+            border-radius: 16px;
+            background: #253341;
+            color: #edf1f3;
+            font: inherit;
+            line-height: 1.5;
+            resize: vertical;
+            outline: none;
+        }
+
+        #memory-editor:focus {
+            border-color: #b9cdd1;
+            box-shadow: 0 0 0 3px rgba(185, 205, 209, 0.25);
+        }
+          #related-memory-ids {
+            display: block;
+            width: 100%;
+            min-height: 50px;
+            padding: 14px 18px;
+            border: 1px solid #46596b;
+            border-radius: 16px;
+            background: #253341;
+            color: #edf1f3;
+            font: inherit;
+            line-height: 1.5;
+            outline: none;
+        }
+
+        #related-memory-ids:focus {
+            border-color: #b9cdd1;
+            box-shadow: 0 0 0 3px rgba(185, 205, 209, 0.25);
+        }
+        .memory-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .memory-actions button,
+        .memory-actions a {
+            border: 0;
+            border-radius: 14px;
+            padding: 12px 24px;
+            background: #34495a;
+            color: #f1f5f7;
+            font: inherit;
+            text-decoration: none;
+            cursor: pointer;
+            box-shadow: 0 5px 10px rgba(10, 18, 28, 0.28);
+        }
+
+        .memory-actions button:hover,
+        .memory-actions a:hover {
+            background: #88a8ba;
+        }
+        .memory-related {
+            margin-top: 28px;
+            padding-top: 20px;
+            border-top: 1px solid #3b4b5b;
+            color: #aebdca;
+            font-size: 0.9rem;
+        }
+
+        .empty {
+            padding: 20px 12px;
+            color: #aebdca;
+        }
+
+        @media (max-width: 750px) {
+            .memories-workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .memories-list {
+                border-right: 0;
+                border-bottom: 1px solid #3b4b5b;
+            }
+        }
+
+        @media (max-width: 650px) {
+            .memories-list,
+            .memory-detail {
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+{% macro render_memory_categories(parent_id=None) %}
+    {% for category in memory_categories
+        if category.parent_id == parent_id %}
+        <li
+            class="memory-taxonomy-category"
+            data-category-id="{{ category.id }}"
+        >
+            <div class="memory-taxonomy-header">
+                {% if memory_categories
+                    |selectattr("parent_id", "equalto", category.id)
+                    |list %}
+                    <button
+                        type="button"
+                        class="memory-category-collapse"
+                        aria-label="Collapse category"
+                    >
+                        ▾
+                    </button>
+                {% endif %}
+
+                <a
+                    href="{{ url_for(
+                        'memories',
+                        memory_category=category.id,
+                        archived='on' if include_archived else None,
+                        search=search_term or None,
+                        preview_lines=preview_lines
+                    ) }}"
+                    class="{% if memory_category_id == category.id %}selected{% endif %}"
+                >
+                    {{ category.name }}
+                </a>
+
+                <button
+                    type="button"
+                    class="memory-category-menu"
+                    aria-label="Category options"
+                >
+                    ⋮
+                </button>
+            </div>
+
+            {% if memory_categories
+                |selectattr("parent_id", "equalto", category.id)
+                |list %}
+                <ul>
+                    {{ render_memory_categories(category.id) }}
+                </ul>
+            {% endif %}
+        </li>
+    {% endfor %}
+{% endmacro %}
+    <main>
+        <div class="top">
+            <a class="brand" href="{{ url_for('home') }}">ALF</a>
+        </div>
+
+        <header class="intro">
+            <div class="illustration">♧</div>
+            <h1>Memories</h1>
+            <p>Browse what ALF remembers.</p>
+        </header>
+
+        <section class="memories-workspace">
+            <div class="memories-list">
+                <nav class="memory-taxonomy">
+                    <h2>Memory categories</h2>
+
+                    <ul>
+                        <li>
+                            <a
+                                href="{{ url_for(
+                                    'memories',
+                                    archived='on' if include_archived else None,
+                                    search=search_term or None,
+                                    preview_lines=preview_lines
+                                ) }}"
+                                class="{% if memory_category_id is none %}selected{% endif %}"
+                            >
+                                All memories
+                            </a>
+                        </li>
+
+                        {{ render_memory_categories() }}
+                    </ul>
+                    <button
+                        type="button"
+                        id="new-memory-category"
+                        class="memory-new-category"
+                    >
+                        ＋ New category
+                    </button>
+                </nav>
+                <form method="get">
+                    {% if memory_category_id is not none %}
+                        <input
+                            type="hidden"
+                            name="memory_category"
+                            value="{{ memory_category_id }}"
+                        >
+                    {% endif %}
+
+                    <label class="memories-filter">
+                        Search
+                        <input
+                            type="search"
+                            name="search"
+                            value="{{ search_term }}"
+                            placeholder="Search memories"
+                        >
+                    </label>
+
+                    <label class="memories-filter">
+                        Preview lines
+                        <select name="preview_lines">
+                            {% for lines in [2, 5, 10, 15] %}
+                                <option
+                                    value="{{ lines }}"
+                                    {% if preview_lines == lines %}selected{% endif %}
+                                >
+                                    {{ lines }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label class="memories-filter">
+                        <input
+                            type="checkbox"
+                            name="archived"
+                            {% if include_archived %}checked{% endif %}
+                        >
+                        Include archived
+                    </label>
+
+                    <button type="submit">Filter</button>
+                </form>
+
+                <div class="memory-list">
+                    {% for memory in memories %}
+                        <div
+                            class="memory{% if memory.status != 'active' %} memory-archived{% endif %}"
+                            draggable="true"
+                            data-memory-id="{{ memory.id }}"
+                        >
+                            <a
+                                class="memory-select"
+                                href="{{ url_for(
+                                    'memories',
+                                    memory_category=memory_category_id,
+                                    archived='on' if include_archived else None,
+                                    search=search_term or None,
+                                    selected=memory.id,
+                                    preview_lines=preview_lines
+                                ) }}"
+                            >
+                                <span class="memory-id">{{ memory.id }}</span>
+                                <span class="memory-category">
+                                    {{ memory.category }}
+                                    {% if memory.status != "active" %}
+                                        *
+                                    {% endif %}
+                                </span>
+                                <span class="memory-taxonomy-tag">
+                                    {{ memory.memory_category_path }}
+                                </span>
+                            </a>
+
+                            <div class="memory-content">
+                                <div class="memory-preview">
+                                    {{ memory.content.split('\n')[:preview_lines|int] | join('\n') }}
+                                </div>
+
+                                {% if memory.content.split('\n') | length > preview_lines|int %}
+                                    <div class="memory-full" hidden>
+                                        {{ memory.content }}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        class="memory-expand"
+                                    >
+                                        Expand
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="memory-rollup"
+                                        hidden
+                                    >
+                                        Roll up
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="empty">No memories to display.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="memory-detail">
+                {% if selected_memory %}
+                    <h2>Memory {{ selected_memory.id }}</h2>
+
+                    <div class="memory-meta">
+                        Category: {{ selected_memory.category }}
+                        · {{ selected_memory.created }}
+                        {% if selected_memory.status != "active" %}
+                            · {{ selected_memory.status|capitalize }}
+                        {% endif %}
+                    </div>
+
+                    {% if edit_id == selected_memory.id|string %}
+                        <form method="post">
+                            <input
+                                type="hidden"
+                                name="memory_id"
+                                value="{{ selected_memory.id }}"
+                            >
+                            <input
+                                type="hidden"
+                                name="search"
+                                value="{{ search_term }}"
+                            >
+                            <textarea
+                                name="content"
+                                id="memory-editor"
+                            >{{ selected_memory.content }}</textarea>
+                            <label for="memory-category-id">
+                                Memory category
+                            </label>
+
+                            <select
+                                name="memory_category_id"
+                                id="memory-category-id"
+                            >
+                                <option value="">Uncategorised</option>
+
+                                {% for category in memory_categories %}
+                                    <option
+                                        value="{{ category.id }}"
+                                        {% if selected_memory.memory_category_id == category.id %}selected{% endif %}
+                                    >
+                                        {{ category.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <label for="related-memory-ids">
+                                Related memory IDs
+                            </label>
+
+                            <input
+                                type="text"
+                                name="related_memory_ids"
+                                id="related-memory-ids"
+                                value="{{ selected_memory.related_memory_ids or '' }}"
+                            >
+
+                            <div class="memory-actions">
+                                <button type="submit">
+                                    Save
+                                </button>
+
+                                <a
+                                    href="{{ url_for(
+                                        'memories',
+                                        selected=selected_memory.id,
+                                        memory_category=memory_category_id,
+                                        archived='on' if include_archived else None,
+                                        search=search_term or None,
+                                        preview_lines=preview_lines
+                                    ) }}"
+                                >
+                                    Cancel
+                                </a>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="memory-text">{{ selected_memory.content }}</div>
+
+                        <div class="memory-actions">
+                            <a
+                                href="{{ url_for(
+                                    'memories',
+                                    selected=selected_memory.id,
+                                    edit=selected_memory.id,
+                                    memory_category=memory_category_id,
+                                    archived='on' if include_archived else None,
+                                    search=search_term or None,
+                                    preview_lines=preview_lines
+                                ) }}"
+                            >
+                                Edit
+                            </a>
+
+                            {% if selected_memory.status == "active" %}
+                            <form
+                                method="post"
+                                action="{{ url_for('archive_memory_web') }}"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="memory_id"
+                                    value="{{ selected_memory.id }}"
+                                >
+
+                        <input
+                            type="hidden"
+                            name="preview_lines"
+                            value="{{ preview_lines }}"
+                        >
+                        <input
+                            type="hidden"
+                            name="memory_category"
+                            value="{{ memory_category_id }}"
+                        >
+                        <input
+                            type="hidden"
+                            name="archived"
+                            value="{{ 'on' if include_archived else '' }}"
+                        >
+                        <input
+                            type="hidden"
+                            name="search"
+                            value="{{ search_term }}"
+                        >
+
+                        <button type="submit">
+                                    {% if selected_memory.status == "archived" %}
+                                        Restore
+                                    {% else %}
+                                        Archive
+                                    {% endif %}
+                                </button>
+                            </form>
+                            {% else %}
+                                <form method="post" action="{{ url_for('restore_memory_web') }}">
+                                    <input
+                                        type="hidden"
+                                        name="memory_id"
+                                        value="{{ selected_memory.id }}"
+                                    >
+                            <input
+                                type="hidden"
+                                name="preview_lines"
+                                value="{{ preview_lines }}"
+                            >
+                            <input
+                                type="hidden"
+                                name="memory_category"
+                                value="{{ memory_category_id }}"
+                            >
+                            <input
+                                type="hidden"
+                                name="archived"
+                                value="{{ 'on' if include_archived else '' }}"
+                            >
+                            <input
+                                type="hidden"
+                                name="search"
+                                value="{{ search_term }}"
+                            >
+
+                            <button type="submit">
+                                        Restore
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                            <form
+                                method="post"
+                                action="{{ url_for('delete_memory_web') }}"
+                                class="delete-memory-form"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="memory_id"
+                                    value="{{ selected_memory.id }}"
+                                >
+                                <input
+                                    type="hidden"
+                                    name="preview_lines"
+                                    value="{{ preview_lines }}"
+                                >
+                                <input
+                                    type="hidden"
+                                    name="memory_category"
+                                    value="{{ memory_category_id }}"
+                                >
+                                <input
+                                    type="hidden"
+                                    name="archived"
+                                    value="{{ 'on' if include_archived else '' }}"
+                                >
+                                <input
+                                    type="hidden"
+                                    name="search"
+                                    value="{{ search_term }}"
+                                >
+
+                                <button type="submit">
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="memory-related">
+                            Related:
+                            {{ selected_memory.related_memory_ids or "None" }}
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <h2>Select a memory</h2>
+                    <div class="memory-meta">
+                        Choose a memory from the list to view its details.
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+    <script
+        src="{{ url_for('static', filename='dialog.js') }}"
+    ></script>
+    <script src="{{ url_for('static', filename='memories.js') }}"></script>
+    <script>
+        document
+            .querySelector(".delete-memory-form")
+            ?.addEventListener("submit", async function (event) {
+                event.preventDefault();
+
+                const confirmed = await alfConfirm(
+                    "Delete this memory permanently?"
+                );
+
+                if (confirmed) {
+                    this.submit();
+                }
+            });
+    </script>
+</body>
+</html>

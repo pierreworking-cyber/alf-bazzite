@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ALF — Remember</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+    <style>
+        main {
+            padding: 25px 0 50px;
+        }
+
+        .top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .brand {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            color: inherit;
+            text-decoration: none;
+        }
+
+
+        .intro {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .illustration {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 2.2rem;
+            font-weight: 500;
+        }
+
+        .intro p {
+            margin: 0;
+            color: #aebdca;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="top">
+            <a class="brand" href="{{ url_for('home') }}">ALF</a>
+        </div>
+        <header class="intro">
+            <div class="illustration">✎</div>
+            <h1>Remember</h1>
+            <p>Give ALF something worth remembering.</p>
+        </header>
+        <section class="remember-workspace">
+            <form method="post" id="remember-form">
+                <label for="content">What would you like ALF to remember?</label>
+
+                <textarea
+                    id="content"
+                    name="content"
+                    placeholder="Enter something worth remembering."
+                    required
+                    autofocus
+                >{{ content }}</textarea>
+
+                <div class="remember-controls">
+                    <label for="category">Category</label>
+
+                    <select
+                        id="category"
+                        name="category"
+                    >
+                        <option
+                            value="note"
+                            {% if category == "note" %}selected{% endif %}
+                        >
+                            Note
+                        </option>
+                        <option
+                            value="preference"
+                            {% if category == "preference" %}selected{% endif %}
+                        >
+                            Preference
+                        </option>
+                        <option
+                            value="decision"
+                            {% if category == "decision" %}selected{% endif %}
+                        >
+                            Decision
+                        </option>
+                        <option
+                            value="fact"
+                            {% if category == "fact" %}selected{% endif %}
+                        >
+                            Fact
+                        </option>
+                    </select>
+
+                    <button type="submit" id="remember-button">
+                        Remember
+                    </button>
+                </div>
+
+                <div
+                    class="remember-related"
+                    id="remember-related"
+                    hidden
+                >
+                    <h2>Related memories</h2>
+                    <div id="related-list"></div>
+                </div>
+            </form>
+
+            <div class="remember-status" id="remember-status">
+                Status: {{ status }}
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const contentInput = document.querySelector("#content");
+        const relatedSection = document.querySelector("#remember-related");
+        const relatedList = document.querySelector("#related-list");
+
+        let relatedTimer;
+
+        contentInput.addEventListener("input", function () {
+            clearTimeout(relatedTimer);
+
+            const content = this.value.trim();
+
+            if (!content) {
+                relatedSection.hidden = true;
+                relatedList.replaceChildren();
+                return;
+            }
+
+            relatedTimer = setTimeout(async function () {
+                const response = await fetch(
+                    "{{ url_for('remember_related') }}" +
+                    "?content=" + encodeURIComponent(content)
+                );
+
+                const memories = await response.json();
+
+                relatedList.replaceChildren();
+
+                if (!memories.length) {
+                    relatedSection.hidden = true;
+                    return;
+                }
+
+                for (const memory of memories) {
+                    const label = document.createElement("label");
+                    label.className = "related-memory";
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.name = "related_memory_ids";
+                    checkbox.value = memory.id;
+
+                    const text = document.createElement("span");
+                    text.textContent =
+                        `${memory.id}  ${memory.category}  ${memory.content}`;
+
+                    label.append(checkbox, text);
+                    relatedList.append(label);
+                }
+
+                relatedSection.hidden = false;
+            }, 500);
+        });
+
+        document
+            .querySelector("#remember-form")
+            .addEventListener("submit", function () {
+                const status = document.querySelector("#remember-status");
+                const button = document.querySelector("#remember-button");
+
+                status.textContent = "Status: Saving…";
+                button.disabled = true;
+
+                requestAnimationFrame(() => {
+                    this.submit();
+                });
+            });
+    </script>
+</body>
+</html>

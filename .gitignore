@@ -1,0 +1,23 @@
+.venv/
+build/
+__pycache__/
+*.pyc
+*.egg-info/
+# ALF memory database
+*.db
+# ALF runtime data
+data/
+logs/
+*.kate-swp
+docs/
+# Local SearXNG configuration
+
+.searxng/
+
+# Benchmark run results
+benchmarks/interpreter_results_*.txt
+benchmarks/explain_routing_*.txt
+benchmarks/routing_results_*.txt
+benchmarks/torture_result*.txt
+#Notes
+benchmarks/overview.md

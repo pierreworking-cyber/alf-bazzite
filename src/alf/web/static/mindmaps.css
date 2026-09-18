@@ -1,0 +1,424 @@
+main {
+    width: min(1100px, 90%);
+    margin: 0 auto;
+    padding: 25px 0 50px;
+}
+
+.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.brand {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: inherit;
+    text-decoration: none;
+}
+
+.back {
+    color: #aebdca;
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+.back:hover {
+    color: #edf1f3;
+}
+
+.intro {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.illustration {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.5rem;
+}
+
+h1 {
+    margin: 0 0 10px;
+    font-size: 2.2rem;
+    font-weight: 500;
+}
+
+.intro p {
+    margin: 0;
+    color: #aebdca;
+}
+
+.mindmap-category-actions {
+    margin: -4px 0 10px;
+    padding: 6px;
+    border: 1px solid #46596b;
+    border-radius: 8px;
+    background: #25313e;
+    box-shadow: 0 8px 20px rgba(10, 18, 28, 0.25);
+    display: flex;
+    gap: 4px;
+}
+
+.mindmap-category-actions button {
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: #aebdca;
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.mindmap-category-actions button:hover {
+    background: #34495a;
+    color: #edf1f3;
+}
+
+.mindmaps-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.mindmaps-toolbar button {
+    border: 1px solid #46596b;
+    border-radius: 10px;
+    padding: 8px 14px;
+    background: #34495a;
+    color: #edf1f3;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(10, 18, 28, 0.18);
+}
+
+.mindmaps-toolbar button:hover {
+    background: #88a8ba;
+}
+
+.mindmaps-toolbar button:active {
+    transform: translateY(1px);
+}
+
+.mindmaps-workspace {
+    min-height: 500px;
+    padding: 35px;
+    border-radius: 28px;
+    background: #2b3948;
+    border: 1px solid #3b4b5b;
+    box-shadow: 0 12px 35px rgba(10, 18, 28, 0.18);
+    display: flex;
+    gap: 28px;
+}
+.mindmap-library {
+    padding: 28px 24px;
+    border-right: 1px solid #3b4b5b;
+    overflow-y: auto;
+}
+
+.mindmap-library h2 {
+    margin: 0 0 24px;
+    font-size: 1.05rem;
+    font-weight: 500;
+}
+
+.mindmap-editor {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.mindmap-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    color: #aebdca;
+    text-align: center;
+}
+
+.mindmap-category {
+    margin-bottom: 24px;
+}
+
+.mindmap-category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mindmap-category h3 {
+    margin: 0 0 10px;
+    color: #aebdca;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.mindmap-category-menu {
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: #aebdca;
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.mindmap-category-menu:hover {
+    color: #edf1f3;
+}
+
+    .mindmap-category.collapsed h3 {
+    margin-bottom: 0;
+}
+
+.mindmap-category.collapsed .mindmap-list {
+    display: none;
+}
+
+.mindmap-category h3 {
+    cursor: pointer;
+    user-select: none;
+}
+
+.mindmap-category h3::before {
+    content: "▾";
+    display: inline-block;
+    width: 1em;
+    transition: transform 0.15s ease;
+}
+
+.mindmap-category.collapsed h3::before {
+    transform: rotate(-90deg);
+}
+
+.mindmap-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mindmap-item {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: #edf1f3;
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+    #mindmap-delete-target {
+        padding: 9px 11px;
+        border: 1px dashed #46596b;
+        border-radius: 10px;
+        color: #aebdca;
+        font-size: 0.9rem;
+        text-align: left;
+        box-shadow: inset 0 4px 5px rgba(10, 18, 28, 0.28);
+    }
+
+    #mindmap-delete-target.drag-over {
+        background: #34495a;
+        border-color: #aebdca;
+        color: #edf1f3;
+    }
+
+
+.mindmap-library-actions {
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid #3b4b5b;
+}
+
+.mindmap-library-actions button {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #46596b;
+    border-radius: 10px;
+    background: #34495a;
+    color: #edf1f3;
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mindmap-library-actions button:hover {
+    background: #88a8ba;
+    border-color: #b9cdd1;
+    color: #202b38;
+}
+.mindmap-editor-actions {
+    margin-top: 8px;
+}
+
+#save-mindmap {
+    margin-top: 16px;
+}
+
+#save-notification {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: #202b38;
+    color: white;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 1000;
+}
+
+#save-notification.show {
+    opacity: 1;
+}
+
+#save-notification.error {
+    background: #7f1d1d;
+}
+
+.mindmap-editor-actions button {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid #46596b;
+    border-radius: 10px;
+    background: #34495a;
+    color: #edf1f3;
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mindmap-editor-actions button:hover {
+    background: #88a8ba;
+    border-color: #b9cdd1;
+    color: #202b38;
+}
+
+.mindmap-item:hover {
+    background: #34495a;
+    border-color: #46596b;
+}
+jmnodes.theme-primary jmnode {
+    background: #34495a;
+    color: #edf1f3;
+    border: 1px solid #46596b;
+    border-radius: 12px;
+    box-shadow: 0 5px 12px rgba(10, 18, 28, 0.22);
+}
+
+jmnodes.theme-primary jmnode:hover {
+    background: #88a8ba;
+    border-color: #b9cdd1;
+    color: #202b38;
+}
+
+jmnodes.theme-primary jmnode.selected {
+    background: #88a8ba;
+    border-color: #b9cdd1;
+    color: #202b38;
+    box-shadow: 0 6px 14px rgba(10, 18, 28, 0.28);
+}
+
+jmnodes.theme-primary jmnode.root {
+    background: #46596b;
+    border-color: #88a8ba;
+    color: #edf1f3;
+}
+
+jmnodes.theme-primary jmexpander {
+    border-color: #aebdca;
+    background: #34495a;
+}
+
+jmnodes.theme-primary jmexpander:hover {
+    border-color: #edf1f3;
+}
+
+.mindmap-node-actions {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+}
+
+.mindmap-node-actions button {
+    padding: 7px 10px;
+    border: 1px solid #46596b;
+    border-radius: 8px;
+    background: #34495a;
+    color: #edf1f3;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.mindmap-node-actions button:hover {
+    background: #88a8ba;
+    border-color: #b9cdd1;
+    color: #202b38;
+}
+
+#jsmind-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+
+
+@media (max-width: 750px) {
+    .mindmaps-workspace {
+        flex-direction: column;
+        padding: 24px;
+        gap: 24px;
+    }
+
+    .mindmap-library {
+        padding: 0 0 24px;
+        border-right: 0;
+        border-bottom: 1px solid #3b4b5b;
+    }
+
+    .mindmap-editor {
+        height: 500px;
+        min-height: 500px;
+    }
+    .mindmap-node-actions {
+        position: static;
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .mindmap-node-actions button {
+        flex: 1 1 auto;
+    }
+}

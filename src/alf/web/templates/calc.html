@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ALF — Calculator</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+    <style>
+        main {
+            padding: 25px 0 50px;
+        }
+
+        .top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .brand {
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            color: inherit;
+            text-decoration: none;
+        }
+
+
+        .intro {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .illustration {
+            width: 90px;
+            height: 90px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: 2.2rem;
+            font-weight: 500;
+        }
+
+        .intro p {
+            margin: 0;
+            color: #aebdca;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div class="top">
+            <a class="brand" href="{{ url_for('home') }}">ALF</a>
+        </div>
+
+        <header class="intro">
+            <div class="illustration">∑</div>
+            <h1>Calculator</h1>
+            <p>Work with numbers, algebra and mathematics.</p>
+        </header>
+
+        <div class="calculator-layout">
+            <section class="calculator-workspace">
+                <form method="post" id="calc-form">
+                    <label for="expression">Expression</label>
+
+                    <input
+                        id="expression"
+                        name="expression"
+                        type="text"
+                        value="{{ expression }}"
+                        placeholder="Enter a mathematical expression."
+                        autofocus
+                    >
+
+                    <div class="calc-options">
+                        <div class="calc-mode">
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="symbolic"
+                                    value=""
+                                    {% if not symbolic %}checked{% endif %}
+                                >
+                                Numeric
+                            </label>
+
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="symbolic"
+                                    value="on"
+                                    {% if symbolic %}checked{% endif %}
+                                >
+                                Symbolic
+                            </label>
+                        </div>
+
+                        <div class="calc-angle">
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="angle_mode"
+                                    value="radians"
+                                    {% if angle_mode == "radians" %}checked{% endif %}
+                                >
+                                Radians
+                            </label>
+
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="angle_mode"
+                                    value="degrees"
+                                    {% if angle_mode == "degrees" %}checked{% endif %}
+                                >
+                                Degrees
+                            </label>
+                        </div>
+
+                        <label class="places-option">
+                            Decimal places
+                            <select
+                                name="places"
+                                id="places"
+                                {% if symbolic %}disabled{% endif %}
+                            >
+                                {% for value in range(1, 11) %}
+                                    <option
+                                        value="{{ value }}"
+                                        {% if places == value %}selected{% endif %}
+                                    >
+                                        {{ value }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="calc-controls">
+                        <button type="submit">Calculate</button>
+                        <button
+                            type="button"
+                            id="clear-button"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                </form>
+
+                <div class="calc-result">
+                    <div class="status">
+                        Status: {{ status }}
+                    </div>
+
+                    <div class="answer">
+                        {{ result }}
+                    </div>
+                </div>
+            </section>
+
+            <aside class="calc-examples">
+                <div class="example-group">
+                    <h2>Try some numerical calculations</h2>
+
+                    {% for example in examples if not example.symbolic %}
+                        <button
+                            type="button"
+                            class="example"
+                            data-expression="{{ example.expression }}"
+                            data-symbolic="false"
+                        >
+                            {{ example.expression }}
+                        </button>
+                    {% endfor %}
+                </div>
+
+                <div class="example-group">
+                    <h2>Explore symbolic mathematics</h2>
+
+                    {% for example in examples if example.symbolic %}
+                        <button
+                            type="button"
+                            class="example"
+                            data-expression="{{ example.expression }}"
+                            data-symbolic="true"
+                        >
+                            {{ example.expression }}
+                        </button>
+                    {% endfor %}
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        const expression = document.querySelector("#expression");
+        const places = document.querySelector("#places");
+        const clearButton = document.querySelector("#clear-button");
+
+        document
+            .querySelectorAll(".example")
+            .forEach(function (example) {
+                example.addEventListener("click", function () {
+                    expression.value = example.dataset.expression;
+
+                    const symbolic =
+                        example.dataset.symbolic === "true";
+
+                    document.querySelector(
+                        `input[name="symbolic"][value="${symbolic ? "on" : ""}"]`
+                    ).checked = true;
+
+                    places.disabled = symbolic;
+                    expression.focus();
+                });
+            });
+
+        document
+            .querySelectorAll('input[name="symbolic"]')
+            .forEach(function (radio) {
+                radio.addEventListener("change", function () {
+                    places.disabled = this.value === "on";
+                });
+            });
+
+        clearButton.addEventListener("click", function () {
+            expression.value = "";
+            expression.focus();
+        });
+    </script>
+</body>
+</html>

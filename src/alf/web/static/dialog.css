@@ -1,0 +1,108 @@
+.alf-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(10, 18, 28, 0.72);
+}
+
+.alf-dialog {
+    width: min(440px, 100%);
+    padding: 24px;
+    border: 1px solid #46596b;
+    border-radius: 18px;
+    background: #2b3948;
+    box-shadow:
+        0 20px 50px rgba(10, 18, 28, 0.5),
+        0 0 0 1px rgba(185, 205, 209, 0.04);
+}
+
+.alf-dialog-message {
+    color: #edf1f3;
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.alf-dialog-input {
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px solid #46596b;
+    border-radius: 10px;
+    background: #25313e;
+    color: #edf1f3;
+    font: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.15s ease;
+}
+
+.alf-dialog-input::placeholder {
+    color: #7f919f;
+}
+
+.alf-dialog-input:hover {
+    border-color: #617587;
+}
+
+.alf-dialog-input:focus {
+    border-color: #88a8ba;
+    background: #263543;
+    box-shadow: 0 0 0 3px rgba(136, 168, 186, 0.18);
+}
+
+.alf-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 22px;
+}
+
+.alf-dialog-actions button {
+    min-width: 72px;
+    padding: 9px 15px;
+    border: 1px solid #46596b;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.alf-dialog-cancel {
+    background: transparent;
+    color: #aebdca;
+}
+
+.alf-dialog-cancel:hover {
+    background: #34495a;
+    border-color: #566b7d;
+    color: #edf1f3;
+}
+
+.alf-dialog-confirm {
+    background: #34495a;
+    color: #edf1f3;
+}
+
+.alf-dialog-confirm:hover {
+    background: #88a8ba;
+    border-color: #b9cdd1;
+    color: #202b38;
+}
+
+.alf-dialog-actions button:focus-visible {
+    outline: 2px solid #88a8ba;
+    outline-offset: 2px;
+}

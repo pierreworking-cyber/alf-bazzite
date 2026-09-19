@@ -113,6 +113,8 @@ def test_ask_returns_ollama_response(monkeypatch):
                 {
                     "source": "web",
                     "title": "France",
+                    "url": "https://example.com/france",
+                    "domain": "example.com",
                     "text": "France is a country in Europe.",
                 }
             ],
@@ -311,6 +313,8 @@ def test_evaluate_research_returns_relevant_result(monkeypatch):
             {
                 "source": "web",
                 "title": "France",
+                "url": "https://example.com/france",
+                "domain": "example.com",
                 "text": "France is a country in Europe. Its capital is Paris.",
             }
         ],
@@ -355,6 +359,8 @@ def test_evaluate_research_returns_not_relevant_result(monkeypatch):
             {
                 "source": "web",
                 "title": "Whitney Houston",
+                "url": "https://example.com/whitney-houston",
+                "domain": "example.com",
                 "text": "Whitney Houston was an American singer and actress.",
             }
         ],

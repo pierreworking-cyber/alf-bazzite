@@ -2,11 +2,13 @@ import json
 
 from alf import llm
 
+MODEL = llm.OLLAMA_MODEL
+
 
 def test_check_ollama_when_service_and_model_are_available(monkeypatch):
     response_data = {
         "models": [
-            {"name": "gemma3:12b"},
+            {"name": MODEL},
             {"name": "some-other-model"},
         ],
     }
@@ -32,7 +34,7 @@ def test_check_ollama_when_service_and_model_are_available(monkeypatch):
     assert result == {
         "available": True,
         "model_available": True,
-        "model": "gemma3:12b",
+        "model": MODEL,
         "error": None,
     }
 
@@ -65,7 +67,7 @@ def test_check_ollama_when_model_is_missing(monkeypatch):
     assert result == {
         "available": True,
         "model_available": False,
-        "model": "gemma3:12b",
+        "model": MODEL,
         "error": None,
     }
 
@@ -80,7 +82,7 @@ def test_check_ollama_when_service_is_unavailable(monkeypatch):
 
     assert result["available"] is False
     assert result["model_available"] is False
-    assert result["model"] == "gemma3:12b"
+    assert result["model"] == MODEL
     assert result["error"] == "Connection refused"
 
 

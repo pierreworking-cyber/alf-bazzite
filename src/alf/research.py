@@ -260,7 +260,7 @@ def rank_passages(question, documents):
         return []
 
     def tokenize(text):
-        return re.findall(r"w+", text.lower())
+        return re.findall(r"\\b\\w+\\b", text.lower())
 
     tokenized = [
         tokenize(passage["text"])

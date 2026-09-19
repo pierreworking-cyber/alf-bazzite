@@ -9,7 +9,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
-from urllib.parse import urlencode, urlparse
+from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from rank_bm25 import BM25Okapi
@@ -71,7 +71,7 @@ def prepare_search_query(question):
         return matches[0]
 
     match = re.match(
-        r"^\s*who\s+wrote\s+(.+?)\??\s*$",
+        r"^s*whos+wrotes+(.+?)??s*$",
         question,
         re.IGNORECASE,
     )
@@ -86,6 +86,25 @@ def domain(url):
     """Return the normalised domain name for a URL."""
 
     return urlparse(url).netloc.lower().removeprefix("www.")
+
+
+def resolve_result_url(url):
+    """Resolve a DuckDuckGo redirect URL to its destination URL."""
+
+    parsed = urlparse(url)
+
+    if parsed.netloc.lower().removeprefix("www.") != "duckduckgo.com":
+        return url
+
+    if parsed.path != "/l/":
+        return url
+
+    destination = parse_qs(parsed.query).get("uddg", [])
+
+    if not destination:
+        return url
+
+    return unquote(destination[0])
 
 
 def fetch(url):
@@ -123,7 +142,7 @@ def search_web(question):
     results = []
 
     for result in parser.results:
-        result_url = result["url"]
+        result_url = resolve_result_url(result["url"])
 
         if domain(result_url) == "duckduckgo.com":
             continue
@@ -241,7 +260,7 @@ def rank_passages(question, documents):
         return []
 
     def tokenize(text):
-        return re.findall(r"\b\w+\b", text.lower())
+        return re.findall(r"w+", text.lower())
 
     tokenized = [
         tokenize(passage["text"])

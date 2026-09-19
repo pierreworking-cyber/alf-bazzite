@@ -176,6 +176,77 @@ def test_answer_question_admits_when_no_research_is_relevant(monkeypatch):
     assert result.research_question == "What film is this?"
 
 
+
+def test_answer_question_passes_all_relevant_research_candidates(
+    monkeypatch,
+):
+    candidates = [
+        {
+            "title": "First source",
+            "url": "https://example.com/first",
+            "text": "Evidence from the first source.",
+        },
+        {
+            "title": "Second source",
+            "url": "https://example.com/second",
+            "text": "Evidence from the second source.",
+        },
+    ]
+
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.RESEARCH,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "interpret_question",
+        lambda question: question,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "research_web",
+        lambda question: candidates,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_research",
+        lambda question, candidates: {
+            "relevant": True,
+            "candidates": [1, 2],
+            "reason": "Both sources support the answer.",
+        },
+    )
+
+    captured = {}
+
+    def fake_prepare_answer(
+        original_question,
+        research_question,
+        evidence,
+        verbose=False,
+    ):
+        captured["evidence"] = evidence
+        return "Answer from both sources."
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        fake_prepare_answer,
+    )
+
+    result = question.answer_question(
+        "What happened?"
+    )
+
+    assert captured["evidence"] == candidates
+    assert result.answer == "Answer from both sources."
+    assert result.source == "web"
+    assert result.research_question == "What happened?"
+
 def test_answer_question_uses_system_information(monkeypatch):
     system_information = {
         "operating_system": "Linux",

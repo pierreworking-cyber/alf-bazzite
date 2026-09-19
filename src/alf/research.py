@@ -71,7 +71,7 @@ def prepare_search_query(question):
         return matches[0]
 
     match = re.match(
-        r"^s*whos+wrotes+(.+?)??s*$",
+        r"^\s*who\s+wrote\s+(.+?)\??\s*$",
         question,
         re.IGNORECASE,
     )

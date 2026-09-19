@@ -71,7 +71,7 @@ def prepare_search_query(question):
         return matches[0]
 
     match = re.match(
-        r"^s*whos+wrotes+(.+?)??s*$",
+        r"^\s*who\s+wrote\s+(.+?)\??\s*$",
         question,
         re.IGNORECASE,
     )
@@ -109,24 +109,11 @@ def fetch(url):
 def search_web(question):
     """Search DuckDuckGo and return candidate result URLs."""
 
-    data = urlencode({"q": prepare_search_query(question)}).encode("utf-8")
-
-    request = Request(
-        "https://html.duckduckgo.com/html/",
-        data=data,
-        headers={
-            "User-Agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/139.0 Safari/537.36"
-            ),
-            "Referer": "https://html.duckduckgo.com/",
-        },
-        method="POST",
-    )
+    query = urlencode({"q": prepare_search_query(question)})
+    url = f"https://html.duckduckgo.com/html/?{query}"
 
     try:
-        html = fetch(request.full_url)
+        html = fetch(url)
     except OSError:
         return []
 
@@ -254,7 +241,7 @@ def rank_passages(question, documents):
         return []
 
     def tokenize(text):
-        return re.findall(r"w+", text.lower())
+        return re.findall(r"\b\w+\b", text.lower())
 
     tokenized = [
         tokenize(passage["text"])

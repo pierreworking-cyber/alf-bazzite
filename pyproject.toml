@@ -12,7 +12,9 @@ dependencies = [
     "sympy",
     "flask",
     "textual",
-    "waitress"
+    "waitress",
+    "rank-bm25",
+    "trafilatura"
 ]
 
 [project.scripts]

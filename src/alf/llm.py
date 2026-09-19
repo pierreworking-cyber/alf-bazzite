@@ -152,7 +152,13 @@ def evaluate_research(question, candidates):
     """
 
     research_text = "\n\n".join(
-        f"Candidate {index + 1}: {candidate['title']}\n{candidate['text']}"
+        (
+            f"Candidate {index + 1}\n"
+            f"Title: {candidate['title']}\n"
+            f"URL: {candidate['url']}\n"
+            f"Domain: {candidate['domain']}\n"
+            f"Evidence: {candidate['text']}"
+        )
         for index, candidate in enumerate(candidates)
     )
 

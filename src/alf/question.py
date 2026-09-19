@@ -174,7 +174,7 @@ def answer_question(
             answer = prepare_answer(
                 original_question,
                 research_question,
-                [relevant_candidates[0]],
+                relevant_candidates,
                 verbose=verbose,
             )
 

@@ -243,6 +243,42 @@ def test_ask_uses_concise_style_when_not_verbose(monkeypatch):
     assert result == "A concise answer."
 
 
+def test_evaluate_research_includes_source_provenance(monkeypatch):
+    captured = {}
+
+    def fake_generate(prompt):
+        captured["prompt"] = prompt
+        return json.dumps(
+            {
+                "relevant": True,
+                "candidates": [1],
+                "reason": "The source supports the answer.",
+            }
+        )
+
+    monkeypatch.setattr(
+        llm,
+        "generate",
+        fake_generate,
+    )
+
+    llm.evaluate_research(
+        "What is the capital of France?",
+        [
+            {
+                "source": "web",
+                "title": "France",
+                "url": "https://www.gov.uk/world/france",
+                "domain": "gov.uk",
+                "text": "France is a country in Europe. Its capital is Paris.",
+            }
+        ],
+    )
+
+    assert "URL: https://www.gov.uk/world/france" in captured["prompt"]
+    assert "Domain: gov.uk" in captured["prompt"]
+
+
 def test_evaluate_research_returns_relevant_result(monkeypatch):
     response_data = {
         "response": json.dumps(

@@ -11,6 +11,11 @@ def test_search_web_returns_duckduckgo_results(monkeypatch):
         </a>
     </div>
     <div class="result">
+        <a class="result__a" href="https://duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.org%2Fpage%3Fanswer%3D42%26source%3Dtest">
+            Wrapped result
+        </a>
+    </div>
+    <div class="result">
         <a class="result__a" href="https://duckduckgo.com/about">
             DuckDuckGo
         </a>
@@ -30,7 +35,12 @@ def test_search_web_returns_duckduckgo_results(monkeypatch):
             "source": "web",
             "title": "Example page",
             "url": "https://example.com/page",
-        }
+        },
+        {
+            "source": "web",
+            "title": "Wrapped result",
+            "url": "https://example.org/page?answer=42&source=test",
+        },
     ]
 
 

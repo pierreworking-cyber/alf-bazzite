@@ -400,6 +400,8 @@ def test_evaluate_research_rejects_invalid_response(monkeypatch):
                 {
                     "source": "web",
                     "title": "France",
+                    "url": "https://example.com/france",
+                    "domain": "example.com",
                     "text": "France is a country in Europe.",
                 }
             ],

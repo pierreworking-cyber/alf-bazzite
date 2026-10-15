@@ -203,6 +203,8 @@ class Miniflux:
         params = {
             "limit": limit,
             "offset": offset,
+            "order": "published_at",
+            "direction": "desc",
         }
         if category_id is not None:
             params["category_id"] = category_id

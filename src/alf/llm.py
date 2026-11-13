@@ -15,9 +15,9 @@ from urllib.request import Request, urlopen
 
 from .personality import ALF_PERSONALITY
 
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
-OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
-OLLAMA_MODEL = "qwen3:14b"
+OLLAMA_URL = "http://100.91.218.54:11434/api/generate"
+OLLAMA_TAGS_URL = "http://100.91.218.54:11434/api/tags"
+OLLAMA_MODEL = "alf:latest"
 
 
 def generate(prompt):
@@ -101,8 +101,7 @@ def ask(answer_request):
         )
     else:
         answer_style = (
-            "Give a concise but useful answer. "
-            "Do not add unnecessary detail."
+            "Give a concise but useful answer. Do not add unnecessary detail."
         )
 
     prompt = f"""
@@ -256,10 +255,7 @@ def check_ollama():
             "error": str(error),
         }
 
-    models = [
-        model.get("name")
-        for model in data.get("models", [])
-    ]
+    models = [model.get("name") for model in data.get("models", [])]
 
     return {
         "available": True,

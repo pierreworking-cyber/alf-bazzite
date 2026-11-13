@@ -12,11 +12,10 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, unquote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
-from rank_bm25 import BM25Okapi
 import trafilatura
+from rank_bm25 import BM25Okapi
 
 from .identity import get_identity
-
 
 MAX_SEARCH_RESULTS = 10
 MAX_EVIDENCE_RESULTS = 10
@@ -57,9 +56,7 @@ class ResultParser(HTMLParser):
 
     def handle_data(self, data):
         if self.in_title:
-            self.current["title"] = (
-                self.current.get("title", "") + data
-            ).strip()
+            self.current["title"] = (self.current.get("title", "") + data).strip()
 
 
 def prepare_search_query(question):
@@ -110,16 +107,17 @@ def resolve_result_url(url):
 def fetch(url):
     """Fetch text content from an external URL."""
 
-    identity = get_identity()
+    if isinstance(url, Request):
+        request = url
+    else:
+        identity = get_identity()
 
-    request = Request(
-        url,
-        headers={
-            "User-Agent": (
-                f"{identity['name']}/{identity['version']}/research"
-            ),
-        },
-    )
+        request = Request(
+            url,
+            headers={
+                "User-Agent": (f"{identity['name']}/{identity['version']}/research"),
+            },
+        )
 
     with urlopen(request, timeout=15) as response:
         return response.read()
@@ -128,16 +126,41 @@ def fetch(url):
 def search_web(question):
     """Search DuckDuckGo and return candidate result URLs."""
 
-    query = urlencode({"q": prepare_search_query(question)})
-    url = f"https://html.duckduckgo.com/html/?{query}"
+    data = urlencode({"q": prepare_search_query(question)}).encode("utf-8")
+
+    request = Request(
+        "https://html.duckduckgo.com/html/",
+        data=data,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/139.0 Safari/537.36"
+            ),
+            "Referer": "https://html.duckduckgo.com/",
+        },
+        method="POST",
+    )
 
     try:
-        html = fetch(url)
+        html = fetch(request)
+
     except OSError:
         return []
 
+    text = html.decode("utf-8", errors="replace")
+
+    if "Unfortunately, bots use DuckDuckGo too." in text:
+        print(
+            "[research] DuckDuckGo has presented a bot challenge. "
+            "Please open DuckDuckGo in a browser and perform a normal "
+            "search, then try ALF again.",
+            flush=True,
+        )
+        return []
+
     parser = ResultParser()
-    parser.feed(html.decode("utf-8", errors="replace"))
+    parser.feed(text)
 
     results = []
 
@@ -179,7 +202,7 @@ def split_into_passages(text, max_words=PASSAGE_MAX_WORDS):
     passages = []
 
     for start in range(0, len(words), max_words):
-        passage = " ".join(words[start:start + max_words])
+        passage = " ".join(words[start : start + max_words])
 
         if passage:
             passages.append(passage)
@@ -192,34 +215,14 @@ def build_documents(results):
 
     def fetch_result(result):
         url = result["url"]
-        start = time.perf_counter()
 
         try:
             text = fetch_and_extract(url)
         except Exception:
-            elapsed = time.perf_counter() - start
-
-            print(
-                f"[research] FETCH FAILED {elapsed:.2f}s {url}",
-                flush=True,
-            )
-
             return None
-
-        elapsed = time.perf_counter() - start
 
         if not text:
-            print(
-                f"[research] FETCH EMPTY {elapsed:.2f}s {url}",
-                flush=True,
-            )
-
             return None
-
-        print(
-            f"[research] FETCH OK {elapsed:.2f}s {url}",
-            flush=True,
-        )
 
         return {
             "title": result["title"],
@@ -229,15 +232,9 @@ def build_documents(results):
         }
 
     with ThreadPoolExecutor(max_workers=5) as executor:
-        documents = list(
-            executor.map(fetch_result, results)
-        )
+        documents = list(executor.map(fetch_result, results))
 
-    return [
-        document
-        for document in documents
-        if document is not None
-    ]
+    return [document for document in documents if document is not None]
 
 
 def rank_passages(question, documents):
@@ -262,10 +259,7 @@ def rank_passages(question, documents):
     def tokenize(text):
         return re.findall(r"\b\w+\b", text.lower())
 
-    tokenized = [
-        tokenize(passage["text"])
-        for passage in passages
-    ]
+    tokenized = [tokenize(passage["text"]) for passage in passages]
 
     bm25 = BM25Okapi(tokenized)
     query_tokens = tokenize(question)

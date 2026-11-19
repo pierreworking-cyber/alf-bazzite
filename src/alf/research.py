@@ -21,6 +21,12 @@ MAX_SEARCH_RESULTS = 10
 MAX_EVIDENCE_RESULTS = 10
 PASSAGE_MAX_WORDS = 120
 
+# DuckDuckGo serves an anti-bot challenge to non-browser user agents.
+USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
 
 class ResultParser(HTMLParser):
     """Parse DuckDuckGo HTML search results."""
@@ -126,20 +132,15 @@ def fetch(url):
 def search_web(question):
     """Search DuckDuckGo and return candidate result URLs."""
 
-    data = urlencode({"q": prepare_search_query(question)}).encode("utf-8")
+    query = urlencode({"q": prepare_search_query(question)})
+    url = f"https://html.duckduckgo.com/html/?{query}"
 
     request = Request(
-        "https://html.duckduckgo.com/html/",
-        data=data,
+        url,
         headers={
-            "User-Agent": (
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/139.0 Safari/537.36"
-            ),
+            "User-Agent": USER_AGENT,
             "Referer": "https://html.duckduckgo.com/",
         },
-        method="POST",
     )
 
     try:

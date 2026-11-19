@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 
 from .personality import ALF_PERSONALITY
 
+# Ollama is bound to the Tailscale address via its systemd override.
 OLLAMA_URL = "http://100.91.218.54:11434/api/generate"
 OLLAMA_TAGS_URL = "http://100.91.218.54:11434/api/tags"
 OLLAMA_MODEL = "alf:latest"
@@ -48,7 +49,8 @@ def generate(prompt):
         method="POST",
     )
 
-    with urlopen(request, timeout=60) as response:
+    # Research evaluation can involve long prompts on the local model.
+    with urlopen(request, timeout=180) as response:
         result = json.load(response)
 
     return result["response"]
@@ -231,14 +233,6 @@ Web research candidates:
 def check_ollama():
     """
     Check availability of the Ollama service and configured model.
-
-    The service is queried for its installed models. A successful
-    connection does not by itself mean ALF can use the configured model;
-    both service availability and model availability are reported.
-
-    Returns:
-        A dictionary containing service availability, model availability,
-        the configured model name, and any connection error.
     """
 
     request = Request(OLLAMA_TAGS_URL)
@@ -257,9 +251,14 @@ def check_ollama():
 
     models = [model.get("name") for model in data.get("models", [])]
 
+    model_available = any(
+        name == OLLAMA_MODEL or name == f"{OLLAMA_MODEL}:latest"
+        for name in models
+    )
+
     return {
         "available": True,
-        "model_available": OLLAMA_MODEL in models,
+        "model_available": model_available,
         "model": OLLAMA_MODEL,
         "error": None,
     }

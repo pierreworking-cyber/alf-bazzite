@@ -122,3 +122,64 @@ def test_build_source_diverse_pool_keeps_authoritative_source():
     selected = research.build_source_diverse_pool(ranked)
 
     assert selected[0]["domain"] == "gov.uk"
+def test_search_web_uses_lite_when_html_is_challenged(monkeypatch):
+    challenge = "Unfortunately, bots use DuckDuckGo too."
+
+    lite_html = """
+    <a class="result-link" href="https://example.org/answer">
+        Lite search result
+    </a>
+    """
+
+    requested_urls = []
+
+    def fake_fetch(request):
+        requested_urls.append(request.full_url)
+
+        if request.full_url == research.DDG_HTML_URL:
+            return challenge.encode("utf-8")
+
+        return lite_html.encode("utf-8")
+
+    monkeypatch.setattr(research, "fetch", fake_fetch)
+
+    result = research.search_web("something useful")
+
+    assert requested_urls == [
+        research.DDG_HTML_URL,
+        research.DDG_LITE_URL,
+    ]
+
+    assert result == [
+        {
+            "source": "web",
+            "title": "Lite search result",
+            "url": "https://example.org/answer",
+        }
+    ]
+
+
+def test_search_web_uses_lite_when_html_has_no_results(monkeypatch):
+    lite_html = """
+    <a class="result-link" href="https://example.org/answer">
+        Lite search result
+    </a>
+    """
+
+    def fake_fetch(request):
+        if request.full_url == research.DDG_HTML_URL:
+            return b"<html><body>No results</body></html>"
+
+        return lite_html.encode("utf-8")
+
+    monkeypatch.setattr(research, "fetch", fake_fetch)
+
+    result = research.search_web("something useful")
+
+    assert result == [
+        {
+            "source": "web",
+            "title": "Lite search result",
+            "url": "https://example.org/answer",
+        }
+    ]

@@ -22,11 +22,14 @@ MAX_EVIDENCE_RESULTS = 10
 PASSAGE_MAX_WORDS = 120
 
 # DuckDuckGo serves an anti-bot challenge to non-browser user agents.
-USER_AGENT = (
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-)
+DDG_HTML_URL = "https://html.duckduckgo.com/html/"
+DDG_LITE_URL = "https://lite.duckduckgo.com/lite/"
 
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/139.0 Safari/537.36"
+)
 
 class ResultParser(HTMLParser):
     """Parse DuckDuckGo HTML search results."""
@@ -64,6 +67,35 @@ class ResultParser(HTMLParser):
         if self.in_title:
             self.current["title"] = (self.current.get("title", "") + data).strip()
 
+class LiteResultParser(HTMLParser):
+    """Parse DuckDuckGo Lite search results."""
+
+    def __init__(self):
+        super().__init__()
+        self.results = []
+        self.in_result = False
+        self.current = {}
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        classes = (attributes.get("class") or "").split()
+
+        if tag == "a" and "result-link" in classes:
+            self.in_result = True
+            self.current = {"url": attributes.get("href", "")}
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self.in_result:
+            if self.current.get("title") and self.current.get("url"):
+                self.results.append(self.current)
+
+            self.in_result = False
+
+    def handle_data(self, data):
+        if self.in_result:
+            self.current["title"] = (
+                self.current.get("title", "") + data
+            ).strip()
 
 def prepare_search_query(question):
     """Prepare a concise search query from a research question."""
@@ -121,66 +153,98 @@ def fetch(url):
         request = Request(
             url,
             headers={
-                "User-Agent": (f"{identity['name']}/{identity['version']}/research"),
+                "User-Agent": (
+                    f"{identity['name']}/{identity['version']}/research"
+                ),
             },
         )
 
     with urlopen(request, timeout=15) as response:
         return response.read()
 
+def is_bot_challenge(text):
+    """Detect a DuckDuckGo bot challenge page."""
+
+    return (
+        "Unfortunately, bots use DuckDuckGo too." in text
+        or "unusual traffic" in text.lower()
+    )
+
+
+def fetch_search_page(url, question):
+    """Fetch a DuckDuckGo search results page for a question."""
+
+    data = urlencode(
+        {"q": prepare_search_query(question)}
+    ).encode("utf-8")
+
+    request = Request(
+        url,
+        data=data,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Referer": "https://duckduckgo.com/",
+        },
+        method="POST",
+    )
+
+    return fetch(request).decode("utf-8", errors="replace")
+
 
 def search_web(question):
     """Search DuckDuckGo and return candidate result URLs."""
 
-    query = urlencode({"q": prepare_search_query(question)})
-    url = f"https://html.duckduckgo.com/html/?{query}"
+    challenged = False
+    parsers = []
 
-    request = Request(
-        url,
-        headers={
-            "User-Agent": USER_AGENT,
-            "Referer": "https://html.duckduckgo.com/",
-        },
-    )
+    for url, parser_class in (
+        (DDG_HTML_URL, ResultParser),
+        (DDG_LITE_URL, LiteResultParser),
+    ):
+        try:
+            text = fetch_search_page(url, question)
+        except OSError:
+            continue
 
-    try:
-        html = fetch(request)
+        if is_bot_challenge(text):
+            challenged = True
+            continue
 
-    except OSError:
-        return []
+        parser = parser_class()
+        parser.feed(text)
 
-    text = html.decode("utf-8", errors="replace")
-
-    if "Unfortunately, bots use DuckDuckGo too." in text:
-        print(
-            "[research] DuckDuckGo has presented a bot challenge. "
-            "Please open DuckDuckGo in a browser and perform a normal "
-            "search, then try ALF again.",
-            flush=True,
-        )
-        return []
-
-    parser = ResultParser()
-    parser.feed(text)
+        if parser.results:
+            parsers.append(parser)
 
     results = []
 
-    for result in parser.results:
-        result_url = resolve_result_url(result["url"])
+    for parser in parsers:
+        for result in parser.results:
+            result_url = resolve_result_url(result["url"])
 
-        if domain(result_url) == "duckduckgo.com":
-            continue
+            if domain(result_url) == "duckduckgo.com":
+                continue
 
-        results.append(
-            {
-                "source": "web",
-                "title": result["title"],
-                "url": result_url,
-            }
+            results.append(
+                {
+                    "source": "web",
+                    "title": result["title"],
+                    "url": result_url,
+                }
+            )
+
+        if results:
+            break
+
+    if not results and challenged:
+        print(
+            "[research] DuckDuckGo has presented a bot challenge. "
+            "Both HTML and Lite search were tried, but neither returned "
+            "usable results.",
+            flush=True,
         )
 
     return results[:MAX_SEARCH_RESULTS]
-
 
 def fetch_and_extract(url):
     """Fetch a web page and extract its readable text."""

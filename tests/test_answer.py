@@ -183,3 +183,61 @@ def test_prepare_answer_preserves_empty_evidence(monkeypatch):
     )
 
     assert captured["request"]["evidence"] == []
+
+def test_prepare_answer_passes_research_judgement(monkeypatch):
+    captured = {}
+
+    def fake_ask(answer_request):
+        captured["request"] = answer_request
+        return "answer"
+
+    monkeypatch.setattr(answer, "ask", fake_ask)
+
+    judgement = "The evidence strongly supports this conclusion."
+
+    answer.prepare_answer(
+        "What does the research establish?",
+        "Research question",
+        [{"source": "web", "content": "Supporting evidence."}],
+        research_judgement=judgement,
+    )
+
+    assert captured["request"]["research_judgement"] == judgement
+
+
+def test_prepare_answer_passes_research_unavailable(monkeypatch):
+    captured = {}
+
+    def fake_ask(answer_request):
+        captured["request"] = answer_request
+        return "answer"
+
+    monkeypatch.setattr(answer, "ask", fake_ask)
+
+    answer.prepare_answer(
+        "Explain rainbows.",
+        "Explain rainbows.",
+        [],
+        research_unavailable=True,
+    )
+
+    assert captured["request"]["research_unavailable"] is True
+    assert captured["request"]["evidence"] == []
+
+def test_prepare_answer_defaults_research_fields(monkeypatch):
+    captured = {}
+
+    def fake_ask(answer_request):
+        captured["request"] = answer_request
+        return "answer"
+
+    monkeypatch.setattr(answer, "ask", fake_ask)
+
+    answer.prepare_answer(
+        "Explain rainbows.",
+        "Explain rainbows.",
+        [],
+    )
+
+    assert captured["request"]["research_judgement"] is None
+    assert captured["request"]["research_unavailable"] is False

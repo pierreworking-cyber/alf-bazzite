@@ -127,7 +127,9 @@ def test_question_command_passes_news_items_to_question_engine(monkeypatch):
     ]
 
 
-def test_answer_question_admits_when_no_research_is_relevant(monkeypatch):
+def test_answer_question_uses_general_knowledge_when_no_research_is_found(
+    monkeypatch,
+):
     monkeypatch.setattr(
         question,
         "route",
@@ -146,38 +148,39 @@ def test_answer_question_admits_when_no_research_is_relevant(monkeypatch):
         lambda question: [],
     )
 
-    monkeypatch.setattr(
-        question,
-        "evaluate_research",
-        lambda question, candidates: {
-            "relevant": False,
-            "candidates": [],
-            "reason": "No reliable evidence.",
-        },
-    )
+    captured = {}
+
+    def fake_prepare_answer(
+        original_question,
+        research_question,
+        evidence,
+        verbose=False,
+        research_judgement=None,
+        research_unavailable=False,
+    ):
+        captured["evidence"] = evidence
+        captured["research_judgement"] = research_judgement
+        captured["research_unavailable"] = research_unavailable
+        return "An answer based on general knowledge."
 
     monkeypatch.setattr(
         question,
         "prepare_answer",
-        lambda *arguments, **kwargs: pytest.fail(
-            "ALF must not answer without evidence"
-        ),
+        fake_prepare_answer,
     )
 
-    result = question.answer_question(
-        "What film is this?"
-    )
+    result = question.answer_question("What film is this?")
 
-    assert result.answer == (
-        "I couldn't find reliable research that answers your question. "
-        "I don't want to guess."
-    )
-    assert result.source is None
+    assert captured["evidence"] == []
+    assert captured["research_unavailable"] is True
+    assert "no usable evidence" in captured["research_judgement"]
+
+    assert result.answer == "An answer based on general knowledge."
+    assert result.source == "llm"
     assert result.research_question == "What film is this?"
 
 
-
-def test_answer_question_passes_all_relevant_research_candidates(
+def test_answer_question_passes_selected_research_evidence(
     monkeypatch,
 ):
     candidates = [
@@ -192,6 +195,14 @@ def test_answer_question_passes_all_relevant_research_candidates(
             "text": "Evidence from the second source.",
         },
     ]
+
+    evaluation = {
+        "answer": "Both sources support the answer.",
+        "confidence": "high",
+        "supporting_candidates": [1, 2],
+        "rejected_candidates": [],
+        "reason": "Both sources provide direct support.",
+    }
 
     monkeypatch.setattr(
         question,
@@ -213,12 +224,8 @@ def test_answer_question_passes_all_relevant_research_candidates(
 
     monkeypatch.setattr(
         question,
-        "evaluate_research",
-        lambda question, candidates: {
-            "relevant": True,
-            "candidates": [1, 2],
-            "reason": "Both sources support the answer.",
-        },
+        "evaluate_evidence",
+        lambda question, candidates: evaluation,
     )
 
     captured = {}
@@ -228,8 +235,12 @@ def test_answer_question_passes_all_relevant_research_candidates(
         research_question,
         evidence,
         verbose=False,
+        research_judgement=None,
+        research_unavailable=False,
     ):
         captured["evidence"] = evidence
+        captured["research_judgement"] = research_judgement
+        captured["research_unavailable"] = research_unavailable
         return "Answer from both sources."
 
     monkeypatch.setattr(
@@ -238,14 +249,207 @@ def test_answer_question_passes_all_relevant_research_candidates(
         fake_prepare_answer,
     )
 
-    result = question.answer_question(
-        "What happened?"
-    )
+    result = question.answer_question("What happened?")
 
     assert captured["evidence"] == candidates
+    assert "Both sources support the answer." in captured["research_judgement"]
+    assert "Confidence: high" in captured["research_judgement"]
+    assert captured["research_unavailable"] is False
+
     assert result.answer == "Answer from both sources."
     assert result.source == "web"
     assert result.research_question == "What happened?"
+
+
+def test_answer_question_falls_back_when_research_confidence_is_low(
+    monkeypatch,
+):
+    candidates = [
+        {
+            "title": "Weak source",
+            "url": "https://example.com/weak",
+            "text": "A weakly supported claim.",
+        },
+    ]
+
+    evaluation = {
+        "answer": "A tentative conclusion.",
+        "confidence": "low",
+        "supporting_candidates": [1],
+        "rejected_candidates": [],
+        "reason": "The evidence is inconclusive.",
+    }
+
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.RESEARCH,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "interpret_question",
+        lambda question: question,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "research_web",
+        lambda question: candidates,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_evidence",
+        lambda question, candidates: evaluation,
+    )
+
+    captured = {}
+
+    def fake_prepare_answer(
+        original_question,
+        research_question,
+        evidence,
+        verbose=False,
+        research_judgement=None,
+        research_unavailable=False,
+    ):
+        captured["evidence"] = evidence
+        captured["research_judgement"] = research_judgement
+        captured["research_unavailable"] = research_unavailable
+        return "An answer based on general knowledge."
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        fake_prepare_answer,
+    )
+
+    result = question.answer_question("What happened?")
+
+    assert captured["evidence"] == []
+    assert captured["research_unavailable"] is True
+    assert "low-confidence support" in captured["research_judgement"]
+    assert "A tentative conclusion" not in captured["research_judgement"]
+
+    assert result.answer == "An answer based on general knowledge."
+    assert result.source == "llm"
+    assert result.research_question == "What happened?"
+
+
+def test_answer_question_falls_back_when_evidence_evaluation_fails(
+    monkeypatch,
+):
+    candidates = [
+        {
+            "title": "Unreviewed source",
+            "url": "https://example.com/unreviewed",
+            "text": "Unreviewed evidence.",
+        },
+    ]
+
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.RESEARCH,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "interpret_question",
+        lambda question: question,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "research_web",
+        lambda question: candidates,
+    )
+
+    def failed_evaluation(question, candidates):
+        raise RuntimeError("Evidence evaluation failed")
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_evidence",
+        failed_evaluation,
+    )
+
+    captured = {}
+
+    def fake_prepare_answer(
+        original_question,
+        research_question,
+        evidence,
+        verbose=False,
+        research_judgement=None,
+        research_unavailable=False,
+    ):
+        captured["evidence"] = evidence
+        captured["research_judgement"] = research_judgement
+        captured["research_unavailable"] = research_unavailable
+        return "An answer without verified web evidence."
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        fake_prepare_answer,
+    )
+
+    result = question.answer_question("What happened?")
+
+    assert captured["evidence"] == []
+    assert captured["research_unavailable"] is True
+    assert "evidence review failed" in captured["research_judgement"]
+
+    assert result.answer == "An answer without verified web evidence."
+    assert result.source == "llm"
+    assert result.research_question == "What happened?"
+
+
+
+def test_answer_question_does_not_retry_when_fallback_answering_fails(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.RESEARCH,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "interpret_question",
+        lambda question: question,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "research_web",
+        lambda question: [],
+    )
+
+    calls = 0
+
+    def failed_prepare_answer(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("Answer generation failed")
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        failed_prepare_answer,
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="Answer generation failed",
+    ):
+        question.answer_question("What happened?")
+
+    assert calls == 1
+
 
 def test_answer_question_uses_system_information(monkeypatch):
     system_information = {

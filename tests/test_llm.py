@@ -1,8 +1,64 @@
 import json
-
+import pytest
 from alf import llm
 
 MODEL = llm.OLLAMA_MODEL
+
+def test_generate_json_requests_json_format(monkeypatch):
+    captured = {}
+
+    response_data = {
+        "response": '{"answer": "Paris"}',
+    }
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            pass
+
+        def read(self):
+            return json.dumps(response_data).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(llm, "urlopen", fake_urlopen)
+
+    result = llm.generate_json("Return JSON.")
+
+    assert captured["payload"]["format"] == "json"
+    assert captured["payload"]["model"] == MODEL
+    assert captured["timeout"] == 180
+    assert result == {"answer": "Paris"}
+
+
+def test_generate_json_rejects_invalid_json(monkeypatch):
+    response_data = {
+        "response": "This is not JSON.",
+    }
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            pass
+
+        def read(self):
+            return json.dumps(response_data).encode("utf-8")
+
+    monkeypatch.setattr(
+        llm,
+        "urlopen",
+        lambda request, timeout: FakeResponse(),
+    )
+
+    with pytest.raises(json.JSONDecodeError):
+        llm.generate_json("Return JSON.")
 
 
 def test_check_ollama_when_service_and_model_are_available(monkeypatch):
@@ -189,6 +245,97 @@ def test_ask_requires_answers_to_stay_within_evidence(monkeypatch):
     )
     assert result == "I don't have enough evidence to answer that."
 
+
+def test_ask_includes_research_judgement(monkeypatch):
+    captured = {}
+
+    def fake_generate(prompt):
+        captured["prompt"] = prompt
+        return "The supported answer."
+
+    monkeypatch.setattr(llm, "generate", fake_generate)
+
+    result = llm.ask(
+        {
+            "question": "What does the research establish?",
+            "evidence": [
+                {
+                    "source": "web",
+                    "content": "The evidence supports the conclusion.",
+                }
+            ],
+            "research_judgement": (
+                "The evidence strongly supports the conclusion."
+            ),
+        }
+    )
+
+    assert "Research judgement:" in captured["prompt"]
+    assert (
+        "The evidence strongly supports the conclusion."
+        in captured["prompt"]
+    )
+    assert (
+        "The research judgement is the authoritative conclusion"
+        in captured["prompt"]
+    )
+    assert result == "The supported answer."
+
+
+def test_ask_allows_general_knowledge_when_research_unavailable(monkeypatch):
+    captured = {}
+
+    def fake_generate(prompt):
+        captured["prompt"] = prompt
+        return "A knowledge-based answer."
+
+    monkeypatch.setattr(llm, "generate", fake_generate)
+
+    result = llm.ask(
+        {
+            "question": "Explain how rainbows form.",
+            "evidence": [],
+            "research_unavailable": True,
+        }
+    )
+
+    assert "Live research was unavailable" in captured["prompt"]
+    assert "general language-model knowledge" in captured["prompt"]
+    assert "Do not claim that the answer has been externally verified." in (
+        captured["prompt"]
+    )
+    assert "Do not refuse merely because live research failed" in (
+        captured["prompt"]
+    )
+    assert result == "A knowledge-based answer."
+
+
+def test_ask_allows_general_knowledge_for_ordinary_questions(monkeypatch):
+    captured = {}
+
+    def fake_generate(prompt):
+        captured["prompt"] = prompt
+        return "An ordinary answer."
+
+    monkeypatch.setattr(llm, "generate", fake_generate)
+
+    result = llm.ask(
+        {
+            "question": "Why is the sky blue?",
+            "evidence": [],
+        }
+    )
+
+    assert "No external evidence was supplied." in captured["prompt"]
+    assert "ordinary knowledge or explanatory question" in (
+        captured["prompt"]
+    )
+    assert (
+        "Do not pretend that this knowledge has been externally verified."
+        in captured["prompt"]
+    )
+
+    assert result == "An ordinary answer."
 
 def test_ask_uses_detailed_style_when_verbose(monkeypatch):
     captured = {}

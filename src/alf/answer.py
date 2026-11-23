@@ -14,6 +14,8 @@ def prepare_answer(
     research_question,
     evidence,
     verbose=False,
+    research_judgement=None,
+    research_unavailable=False,
 ):
     """
     Prepare an answer request and send it to the language-model layer.
@@ -27,6 +29,8 @@ def prepare_answer(
         research_question: The question used to obtain research evidence.
         evidence: Research evidence selected for use in the answer.
         verbose: Whether to request a more detailed response.
+        research_judgement: The conclusion reached by the evidence review.
+        research_unavailable: Whether reliable live research evidence is unavailable.
 
     Returns:
         The answer produced by the language-model layer.
@@ -37,6 +41,8 @@ def prepare_answer(
         "research_question": research_question,
         "evidence": evidence,
         "verbose": verbose,
+        "research_judgement": research_judgement,
+        "research_unavailable": research_unavailable,
     }
 
     return ask(answer_request)

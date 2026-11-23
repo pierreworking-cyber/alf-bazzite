@@ -183,3 +183,122 @@ def test_search_web_uses_lite_when_html_has_no_results(monkeypatch):
             "url": "https://example.org/answer",
         }
     ]
+
+
+def test_evaluate_evidence_passes_candidates_to_generate_json(monkeypatch):
+    captured = {}
+
+    def fake_generate_json(prompt):
+        captured["prompt"] = prompt
+        return {
+            "answer": "David Niven wrote the book.",
+            "confidence": "high",
+            "supporting_candidates": [1],
+            "rejected_candidates": [],
+            "reason": "The source directly supports the answer.",
+        }
+
+    monkeypatch.setattr(
+        research,
+        "generate_json",
+        fake_generate_json,
+    )
+
+    candidates = [
+        {
+            "domain": "example.org",
+            "title": "Book information",
+            "url": "https://example.org/book",
+            "text": "David Niven wrote The Moon's a Balloon.",
+        }
+    ]
+
+    result = research.evaluate_evidence(
+        "Who wrote The Moon's a Balloon?",
+        candidates,
+    )
+
+    assert "Who wrote The Moon's a Balloon?" in captured["prompt"]
+    assert "Candidate 1" in captured["prompt"]
+    assert "example.org" in captured["prompt"]
+    assert "David Niven wrote The Moon's a Balloon." in captured["prompt"]
+    assert "supporting_candidates" in captured["prompt"]
+    assert result["answer"] == "David Niven wrote the book."
+
+
+def test_evaluate_evidence_returns_generate_json_result_unchanged(monkeypatch):
+    expected = {
+        "answer": "The answer.",
+        "confidence": "medium",
+        "supporting_candidates": [1, 2],
+        "rejected_candidates": [3],
+        "reason": "Two sources support the answer.",
+    }
+
+    monkeypatch.setattr(
+        research,
+        "generate_json",
+        lambda prompt: expected,
+    )
+
+    result = research.evaluate_evidence("A question?", [])
+
+    assert result is expected
+
+
+def test_select_evidence_returns_selected_candidates():
+    candidates = [
+        {"title": "First"},
+        {"title": "Second"},
+        {"title": "Third"},
+    ]
+
+    evaluation = {
+        "supporting_candidates": [1, 3],
+    }
+
+    selected = research.select_evidence(
+        candidates,
+        evaluation,
+    )
+
+    assert selected == [
+        candidates[0],
+        candidates[2],
+    ]
+
+
+def test_select_evidence_ignores_invalid_candidate_indexes():
+    candidates = [
+        {"title": "First"},
+        {"title": "Second"},
+    ]
+
+    evaluation = {
+        "supporting_candidates": [0, 3, "1", None, 2],
+    }
+
+    selected = research.select_evidence(
+        candidates,
+        evaluation,
+    )
+
+    assert selected == [candidates[1]]
+
+
+def test_select_evidence_returns_empty_list_when_nothing_is_supported():
+    candidates = [
+        {"title": "First"},
+        {"title": "Second"},
+    ]
+
+    evaluation = {
+        "supporting_candidates": [],
+    }
+
+    selected = research.select_evidence(
+        candidates,
+        evaluation,
+    )
+
+    assert selected == []

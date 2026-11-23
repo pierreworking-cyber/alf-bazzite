@@ -16,9 +16,12 @@ from dataclasses import dataclass
 
 from .answer import prepare_answer
 from .interpretation import interpret_question
-from .llm import evaluate_research
 from .memory import find_relevant_memories
-from .research import research_web
+from .research import (
+    evaluate_evidence,
+    research_web,
+    select_evidence,
+)
 from .router import route
 from .routes import Route
 from .system import get_system_information
@@ -149,47 +152,112 @@ def answer_question(
             research_question=None,
         )
 
-    report("Interpreting question…")
-    research_question = interpret_question(original_question)
 
-    report("Researching the web…")
-    web_candidates = research_web(research_question)
+    def answer_without_research(research_question, judgement):
+        """Answer without claiming that live research verified the result."""
 
-    report("Evaluating web evidence…")
-    web_evaluation = evaluate_research(
+        report("Answering without verified web evidence…")
+
+        answer = prepare_answer(
+            original_question,
+            research_question,
+            [],
+            verbose=verbose,
+            research_judgement=judgement,
+            research_unavailable=True,
+        )
+
+        return QuestionResult(
+            answer=answer,
+            source="llm",
+            research_question=research_question,
+        )
+
+
+    research_question = original_question
+    fallback_judgement = None
+
+    try:
+        report("Interpreting question…")
+        research_question = interpret_question(original_question)
+
+        report("Researching the web…")
+        web_candidates = research_web(research_question)
+
+        if not web_candidates:
+            fallback_judgement = (
+                "Live research returned no usable evidence."
+            )
+        else:
+            report("Evaluating web evidence…")
+            web_evaluation = evaluate_evidence(
+                research_question,
+                web_candidates,
+            )
+
+            if not isinstance(web_evaluation, dict):
+                raise ValueError("Invalid research evaluation")
+
+            evaluation_answer = web_evaluation.get("answer")
+            confidence = web_evaluation.get("confidence")
+            supporting = web_evaluation.get("supporting_candidates")
+            rejected = web_evaluation.get("rejected_candidates")
+            reason = web_evaluation.get("reason")
+
+            if (
+                not isinstance(evaluation_answer, str)
+                or not evaluation_answer.strip()
+                or confidence not in {"high", "medium", "low"}
+                or not isinstance(supporting, list)
+                or not isinstance(rejected, list)
+                or not isinstance(reason, str)
+            ):
+                raise ValueError("Incomplete research evaluation")
+
+            research_judgement = (
+                f"Best-supported answer: {evaluation_answer}\n"
+                f"Confidence: {confidence}\n"
+                f"Reason: {reason}"
+            )
+
+            relevant_candidates = select_evidence(
+                web_candidates,
+                web_evaluation,
+            )
+
+            if confidence == "low":
+                fallback_judgement = (
+                    "The evidence review found only low-confidence "
+                    "support. No web evidence has been accepted as reliable."
+                )
+            elif not relevant_candidates:
+                fallback_judgement = research_judgement
+
+    except Exception:
+        fallback_judgement = (
+            "Live research or its evidence review failed. "
+            "No web evidence has been accepted as reliable."
+        )
+
+    if fallback_judgement is not None:
+        return answer_without_research(
+            research_question,
+            fallback_judgement,
+        )
+
+    report("Asking local language model…")
+
+    answer = prepare_answer(
+        original_question,
         research_question,
-        web_candidates,
+        relevant_candidates,
+        verbose=verbose,
+        research_judgement=research_judgement,
     )
 
-    if web_evaluation["relevant"]:
-        relevant_candidates = [
-            web_candidates[index - 1]
-            for index in web_evaluation["candidates"]
-            if 1 <= index <= len(web_candidates)
-        ]
-
-        if relevant_candidates:
-            report("Asking local language model…")
-
-            answer = prepare_answer(
-                original_question,
-                research_question,
-                relevant_candidates,
-                verbose=verbose,
-            )
-
-            return QuestionResult(
-                answer=answer,
-                source="web",
-                research_question=research_question,
-            )
-
     return QuestionResult(
-        answer=(
-            "I couldn't find reliable research that answers your question. "
-            "I don't want to guess."
-        ),
-        source=None,
+        answer=answer,
+        source="web",
         research_question=research_question,
     )
 

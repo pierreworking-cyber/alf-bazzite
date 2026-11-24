@@ -727,4 +727,13 @@ def test_ask_includes_assessment_correction_without_weakening_evidence_rules(
         captured["prompt"]
     )
     assert result == "The revised answer."
+    assert "You MUST address every issue identified in the feedback." in (
+        captured["prompt"]
+    )
+    assert "Implement the suggested correction in the revised answer" in (
+        captured["prompt"]
+    )
+    assert "Check that the revised answer actually resolves the" in (
+        captured["prompt"]
+    )
 

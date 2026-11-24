@@ -4,7 +4,6 @@ import pytest
 
 from alf import llm
 
-
 def test_evaluate_answer_returns_valid_assessment(monkeypatch):
     expected = {
         "verdict": "ACCEPT",
@@ -13,7 +12,10 @@ def test_evaluate_answer_returns_valid_assessment(monkeypatch):
         "reason": "The answer is accurate and complete.",
     }
 
-    def fake_generate(prompt):
+    captured = {}
+
+    def fake_generate(prompt, **kwargs):
+        captured["kwargs"] = kwargs
         return json.dumps(expected)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -26,10 +28,14 @@ def test_evaluate_answer_returns_valid_assessment(monkeypatch):
     )
 
     assert result == expected
+    assert captured["kwargs"] == {
+        "think": False,
+        "options": {"num_predict": 256},
+    }
 
 
 def test_evaluate_answer_rejects_invalid_json(monkeypatch):
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return "This is not JSON."
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -53,7 +59,7 @@ def test_evaluate_answer_rejects_missing_fields(monkeypatch):
         "reason": "The answer looks correct.",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(incomplete)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -78,7 +84,7 @@ def test_evaluate_answer_rejects_unknown_verdict(monkeypatch):
         "reason": "The answer seems reasonable.",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(invalid)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -103,7 +109,7 @@ def test_evaluate_answer_rejects_invalid_field_types(monkeypatch):
         "reason": "The answer is correct.",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(invalid)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -128,7 +134,7 @@ def test_evaluate_answer_rejects_non_string_issues(monkeypatch):
         "reason": "An important detail is missing.",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(invalid)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -155,7 +161,7 @@ def test_evaluate_answer_uses_research_evidence_rules(monkeypatch):
 
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return json.dumps(expected)
 
@@ -195,7 +201,7 @@ def test_evaluate_answer_uses_memory_evidence_rules(monkeypatch):
 
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return json.dumps(expected)
 
@@ -230,7 +236,7 @@ def test_evaluate_answer_uses_system_evidence_rules(monkeypatch):
 
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return json.dumps(expected)
 
@@ -269,7 +275,7 @@ def test_evaluate_answer_uses_general_knowledge_rules(monkeypatch):
 
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return json.dumps(expected)
 
@@ -302,7 +308,7 @@ def test_evaluate_answer_accepts_revise_verdict(monkeypatch):
         "reason": "The instructions are incomplete.",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(expected)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -329,7 +335,7 @@ def test_evaluate_answer_accepts_research_verdict(monkeypatch):
         "reason": "The installed version needs to be checked against a current source.",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(expected)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -356,7 +362,7 @@ def test_evaluate_answer_accepts_unresolved_verdict(monkeypatch):
         "reason": "There is insufficient information to give a reliable answer.",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(expected)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -381,7 +387,7 @@ def test_evaluate_answer_rejects_non_string_verdict(monkeypatch):
         "reason": "The answer looks correct.",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(invalid)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -407,7 +413,7 @@ def test_evaluate_answer_rejects_unexpected_fields(monkeypatch):
         "confidence": "high",
     }
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(invalid)
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -425,7 +431,7 @@ def test_evaluate_answer_rejects_unexpected_fields(monkeypatch):
 
 
 def test_evaluate_answer_rejects_non_object_json(monkeypatch):
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         return json.dumps(["ACCEPT", "No issues"])
 
     monkeypatch.setattr(llm, "generate", fake_generate)
@@ -452,7 +458,7 @@ def test_evaluate_answer_treats_evidence_as_untrusted(monkeypatch):
 
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return json.dumps(expected)
 
@@ -493,7 +499,7 @@ def test_evaluate_answer_uses_fallback_rules_when_research_unavailable(
 
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return json.dumps(expected)
 

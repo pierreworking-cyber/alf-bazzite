@@ -769,14 +769,22 @@ def test_answer_question_revises_answer_when_assessment_requests_it(
     def fake_evaluate_answer(**kwargs):
         assessment_calls.append(kwargs)
 
+        if len(assessment_calls) == 1:
+            return {
+                "verdict": "REVISE",
+                "issues": ["The original answer is incomplete."],
+                "correction": (
+                    "Explain that the command only displays the "
+                    "configuration; it does not change it."
+                ),
+                "reason": "The answer needs clarification.",
+            }
+
         return {
-            "verdict": "REVISE",
-            "issues": ["The original answer is incomplete."],
-            "correction": (
-                "Explain that the command only displays the "
-                "configuration; it does not change it."
-            ),
-            "reason": "The answer needs clarification.",
+            "verdict": "ACCEPT",
+            "issues": [],
+            "correction": "",
+            "reason": "The corrected answer is satisfactory.",
         }
 
     monkeypatch.setattr(
@@ -790,7 +798,7 @@ def test_answer_question_revises_answer_when_assessment_requests_it(
     result = question.answer_question(original_question)
 
     assert len(prepare_calls) == 2
-    assert len(assessment_calls) == 1
+    assert len(assessment_calls) == 2
 
     assert prepare_calls[1][1]["assessment_correction"] == (
         "Explain that the command only displays the "
@@ -799,6 +807,120 @@ def test_answer_question_revises_answer_when_assessment_requests_it(
 
     assert result.answer == "The corrected answer."
     assert result.source == "llm"
+
+
+
+@pytest.mark.parametrize(
+    "second_verdict",
+    ["REVISE", "RESEARCH", "UNRESOLVED"],
+)
+def test_answer_question_handles_second_assessment_verdict(
+    monkeypatch,
+    second_verdict,
+):
+    assessment_calls = []
+    prepare_calls = []
+    research_calls = []
+
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.LLM,
+    )
+    monkeypatch.setattr(
+        question,
+        "should_assess",
+        lambda original_question, selected_route: True,
+    )
+
+    def fake_prepare_answer(*args, **kwargs):
+        prepare_calls.append(kwargs)
+        return (
+            "The original answer."
+            if len(prepare_calls) == 1
+            else "The corrected answer."
+        )
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        fake_prepare_answer,
+    )
+
+    def fake_evaluate_answer(**kwargs):
+        assessment_calls.append(kwargs)
+
+        if len(assessment_calls) == 1:
+            return {
+                "verdict": "REVISE",
+                "issues": ["The original answer is incomplete."],
+                "correction": "Clarify the technical distinction.",
+                "reason": "The answer needs correction.",
+            }
+
+        return {
+            "verdict": second_verdict,
+            "issues": ["A further issue remains."],
+            "correction": "A further correction is required.",
+            "reason": "The revised answer remains uncertain.",
+        }
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_answer",
+        fake_evaluate_answer,
+    )
+
+    def fake_research_answer(
+        original_question,
+        research_query,
+        verbose,
+        report,
+        fallback_answer=None,
+    ):
+        research_calls.append({
+            "original_question": original_question,
+            "research_query": research_query,
+            "fallback_answer": fallback_answer,
+        })
+        return question.QuestionResult(
+            answer="The research-supported answer.",
+            source="web",
+            research_question=research_query,
+        )
+
+    monkeypatch.setattr(
+        question,
+        "research_answer",
+        fake_research_answer,
+    )
+
+    original_question = "How do I inspect the configuration?"
+
+    result = question.answer_question(original_question)
+
+    assert len(prepare_calls) == 2
+    assert len(assessment_calls) == 2
+
+    if second_verdict == "REVISE":
+        assert result.answer.startswith("The corrected answer.")
+        assert "could not establish" in result.answer.lower()
+        assert "A further correction is required." in result.answer
+        assert research_calls == []
+
+    elif second_verdict == "RESEARCH":
+        assert result.answer == "The research-supported answer."
+        assert result.source == "web"
+        assert len(research_calls) == 1
+        assert research_calls[0]["fallback_answer"] == (
+            "The corrected answer."
+        )
+
+    elif second_verdict == "UNRESOLVED":
+        assert result.answer.startswith("The corrected answer.")
+        assert "could not establish" in result.answer.lower()
+        assert "remains uncertain" in result.answer
+        assert research_calls == []
 
 
 def test_answer_question_researches_when_assessment_requests_it(monkeypatch):

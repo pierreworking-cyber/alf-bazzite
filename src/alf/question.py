@@ -115,6 +115,73 @@ def answer_question(
                     assessment_correction=evaluation["correction"],
                 )
 
+                report("Checking revised answer…")
+
+                second_evaluation = evaluate_answer(
+                    question=original_question,
+                    answer=answer,
+                    route=selected_route.name,
+                    evidence=[],
+                )
+
+                if second_evaluation["verdict"] == "ACCEPT":
+                    report("Revised answer accepted.")
+
+                elif second_evaluation["verdict"] == "REVISE":
+                    report("The revised answer still has an unresolved issue.")
+
+                    reason = (
+                        second_evaluation.get("correction", "").strip()
+                        or "; ".join(second_evaluation.get("issues", []))
+                        or second_evaluation.get("reason", "")
+                        or "The revised answer may still contain an error."
+                    )
+
+                    answer = (
+                        f"{answer}\n\n"
+                        "ALF could not establish that the revised answer "
+                        "is reliable. The final assessment identified: "
+                        f"{reason}"
+                    )
+
+                elif second_evaluation["verdict"] == "RESEARCH":
+                    report("Revised answer needs independent verification.")
+
+                    correction = (
+                        second_evaluation.get("correction", "").strip()
+                        or "; ".join(second_evaluation.get("issues", []))
+                        or second_evaluation.get("reason", "")
+                        or "Verify the material facts in the revised answer."
+                    )
+
+                    research_query = (
+                        f"{original_question}\n\n"
+                        "Additional point requiring verification: "
+                        f"{correction}"
+                    )
+
+                    return research_answer(
+                        original_question,
+                        research_query,
+                        verbose,
+                        report,
+                        fallback_answer=answer,
+                    )
+
+                elif second_evaluation["verdict"] == "UNRESOLVED":
+                    report("Revised answer reliability could not be established.")
+
+                    reason = second_evaluation.get("reason") or (
+                        "There is insufficient information to establish "
+                        "whether the revised answer is reliable."
+                    )
+
+                    answer = (
+                        f"{answer}\n\n"
+                        "ALF could not establish that this revised answer "
+                        f"is reliable. {reason}"
+                    )
+
             elif evaluation["verdict"] == "RESEARCH":
                 report("Answer needs independent verification.")
 

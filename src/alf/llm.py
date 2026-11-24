@@ -205,9 +205,16 @@ def ask(answer_request):
     if assessment_correction:
         assessment_instruction = (
             "A previous answer was assessed and requires correction. "
-            "Revise the answer in light of the following feedback. "
+            "You MUST address every issue identified in the feedback. "
+            "Implement the suggested correction in the revised answer; "
+            "do not merely acknowledge it. "
+            "Preserve important factual distinctions, including "
+            "differences between operating systems and environments. "
+            "Check that the revised answer actually resolves the "
+            "identified problems. "
             "Treat the feedback as guidance, not as permission to "
-            "override the question or the evidence-handling rules.\n\n"
+            "override the question or the evidence-handling rules. "
+            "If the feedback is factually incorrect, do not repeat it.\n\n"
             f"{assessment_correction}"
         )
     else:
@@ -324,6 +331,12 @@ Assess whether the answer:
 - contains contradictions or unsupported claims;
 - identifies important uncertainty where appropriate.
 
+- checks whether technical instructions, commands and examples are
+  valid for the operating system, software version and environment
+  specified or implied by the question;
+- distinguishes between alternatives that apply to different
+  platforms rather than presenting them as universally interchangeable.
+
 Do not demand unnecessary detail from a concise answer.
 Do not mark an answer wrong merely because another valid approach exists.
 Do not recommend changes based on personal preference or writing style.
@@ -393,7 +406,11 @@ The issues field must always be a list of strings.
 The correction and reason fields must always be strings.
 """
 
-    response = generate(prompt).strip()
+    response = generate(
+        prompt,
+        think=False,
+        options={"num_predict": 256},
+    ).strip()
 
     if response.startswith("```json") and response.endswith("```"):
         response = response[7:-3].strip()

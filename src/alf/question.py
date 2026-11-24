@@ -25,7 +25,8 @@ from .research import (
 from .router import route
 from .routes import Route
 from .system import get_system_information
-
+from .assessment import should_assess
+from .llm import evaluate_answer
 
 @dataclass
 class QuestionResult:
@@ -90,11 +91,74 @@ def answer_question(
             verbose=verbose,
         )
 
+        if should_assess(original_question, selected_route):
+            report("Checking answer quality…")
+
+            evaluation = evaluate_answer(
+                question=original_question,
+                answer=answer,
+                route=selected_route.name,
+                evidence=[],
+            )
+
+            if evaluation["verdict"] == "ACCEPT":
+                report("Answer accepted.")
+
+            elif evaluation["verdict"] == "REVISE":
+                report("Revising answer...")
+
+                answer = prepare_answer(
+                    original_question,
+                    original_question,
+                    [],
+                    verbose=verbose,
+                    assessment_correction=evaluation["correction"],
+                )
+
+            elif evaluation["verdict"] == "RESEARCH":
+                report("Answer needs independent verification.")
+
+                correction = (
+                    evaluation["correction"].strip()
+                    or "; ".join(evaluation["issues"])
+                    or evaluation["reason"]
+                    or "Verify the material facts in the original answer."
+                )
+
+                research_query = (
+                    f"{original_question}\n\n"
+                    "Additional point requiring verification: "
+                    f"{correction}"
+                )
+
+                return research_answer(
+                    original_question,
+                    research_query,
+                    verbose,
+                    report,
+                    fallback_answer=answer,
+                )
+
+            elif evaluation["verdict"] == "UNRESOLVED":
+                report("Answer reliability could not be established.")
+
+                reason = evaluation.get("reason") or (
+                    "There is insufficient information to establish "
+                    "whether the answer is reliable."
+                )
+
+                answer = (
+                    f"{answer}\n\n"
+                    "ALF could not establish that this answer is reliable. "
+                    f"{reason}"
+                )
+
         return QuestionResult(
             answer=answer,
             source="llm",
             research_question=None,
         )
+
     if selected_route == Route.SYSTEM:
         report("Reading system information…")
 
@@ -107,6 +171,7 @@ def answer_question(
             original_question,
             [system_information],
             verbose=verbose,
+            evidence_type="system",
         )
 
         return QuestionResult(
@@ -128,6 +193,7 @@ def answer_question(
                 original_question,
                 memories,
                 verbose=verbose,
+                evidence_type="memory",
             )
 
             return QuestionResult(
@@ -152,6 +218,23 @@ def answer_question(
             research_question=None,
         )
 
+    return research_answer(
+        original_question,
+        original_question,
+        verbose,
+        report,
+        fallback_answer=None,
+    )
+
+
+def research_answer(
+    original_question,
+    research_query,
+    verbose,
+    report,
+    fallback_answer=None,
+):
+    """Research a question and generate an answer from accepted evidence."""
 
     def answer_without_research(research_question, judgement):
         """Answer without claiming that live research verified the result."""
@@ -173,13 +256,12 @@ def answer_question(
             research_question=research_question,
         )
 
-
-    research_question = original_question
+    research_question = research_query
     fallback_judgement = None
 
     try:
         report("Interpreting question…")
-        research_question = interpret_question(original_question)
+        research_question = interpret_question(research_query)
 
         report("Researching the web…")
         web_candidates = research_web(research_question)
@@ -240,6 +322,20 @@ def answer_question(
         )
 
     if fallback_judgement is not None:
+        if fallback_answer is not None:
+            report("Additional research could not verify the answer.")
+
+            return QuestionResult(
+                answer=(
+                    f"{fallback_answer}\n\n"
+                    "ALF attempted additional research, but could not "
+                    "verify the information. The original answer should "
+                    "therefore be treated as unverified."
+                ),
+                source="llm",
+                research_question=research_question,
+            )
+
         return answer_without_research(
             research_question,
             fallback_judgement,
@@ -253,6 +349,7 @@ def answer_question(
         relevant_candidates,
         verbose=verbose,
         research_judgement=research_judgement,
+        evidence_type="research",
     )
 
     return QuestionResult(
@@ -260,7 +357,6 @@ def answer_question(
         source="web",
         research_question=research_question,
     )
-
 
 def _news_result_summary(items):
     """

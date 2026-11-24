@@ -8,7 +8,6 @@ obtains and evaluates research evidence.
 
 from .llm import ask
 
-
 def prepare_answer(
     original_question,
     research_question,
@@ -16,7 +15,10 @@ def prepare_answer(
     verbose=False,
     research_judgement=None,
     research_unavailable=False,
+    evidence_type="none",
+    assessment_correction=None,
 ):
+
     """
     Prepare an answer request and send it to the language-model layer.
 
@@ -41,8 +43,10 @@ def prepare_answer(
         "research_question": research_question,
         "evidence": evidence,
         "verbose": verbose,
+        "evidence_type": evidence_type,
         "research_judgement": research_judgement,
         "research_unavailable": research_unavailable,
+        "assessment_correction": assessment_correction,
     }
 
     return ask(answer_request)

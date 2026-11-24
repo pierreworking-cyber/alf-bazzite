@@ -237,10 +237,13 @@ def test_answer_question_passes_selected_research_evidence(
         verbose=False,
         research_judgement=None,
         research_unavailable=False,
+        evidence_type="none",
     ):
+
         captured["evidence"] = evidence
         captured["research_judgement"] = research_judgement
         captured["research_unavailable"] = research_unavailable
+        captured["evidence_type"] = evidence_type
         return "Answer from both sources."
 
     monkeypatch.setattr(
@@ -255,7 +258,7 @@ def test_answer_question_passes_selected_research_evidence(
     assert "Both sources support the answer." in captured["research_judgement"]
     assert "Confidence: high" in captured["research_judgement"]
     assert captured["research_unavailable"] is False
-
+    assert captured["evidence_type"] == "research"
     assert result.answer == "Answer from both sources."
     assert result.source == "web"
     assert result.research_question == "What happened?"
@@ -407,7 +410,6 @@ def test_answer_question_falls_back_when_evidence_evaluation_fails(
     assert result.research_question == "What happened?"
 
 
-
 def test_answer_question_does_not_retry_when_fallback_answering_fails(
     monkeypatch,
 ):
@@ -478,12 +480,14 @@ def test_answer_question_uses_system_information(monkeypatch):
         research_question,
         evidence,
         verbose=False,
+        evidence_type="none",
     ):
         captured["answer_request"] = {
             "original_question": original_question,
             "research_question": research_question,
             "evidence": evidence,
             "verbose": verbose,
+            "evidence_type": evidence_type,
         }
         return "You are running Linux."
 
@@ -502,6 +506,7 @@ def test_answer_question_uses_system_information(monkeypatch):
         "research_question": "What operating system am I running?",
         "evidence": [system_information],
         "verbose": False,
+        "evidence_type": "system",
     }
 
     assert result.answer == "You are running Linux."
@@ -538,12 +543,14 @@ def test_answer_question_uses_memory_when_relevant(monkeypatch):
         research_question,
         evidence,
         verbose=False,
+        evidence_type="none",
     ):
         captured["answer_request"] = {
             "original_question": original_question,
             "research_question": research_question,
             "evidence": evidence,
             "verbose": verbose,
+            "evidence_type": evidence_type,
         }
         return "We decided to use evidence rather than guesses."
 
@@ -566,6 +573,7 @@ def test_answer_question_uses_memory_when_relevant(monkeypatch):
         ),
         "evidence": memories,
         "verbose": False,
+        "evidence_type": "memory",
     }
 
     assert result.answer == (
@@ -646,6 +654,300 @@ def test_answer_question_declines_unsupported_question(monkeypatch):
     assert result.answer == "I can't help with that."
     assert result.source is None
     assert result.research_question is None
+
+
+def test_answer_question_assesses_substantial_llm_answer(monkeypatch):
+    captured = {}
+
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.LLM,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        lambda *args, **kwargs: (
+            "Use the terminal to inspect the configuration."
+        ),
+    )
+
+    def fake_should_assess(original_question, selected_route):
+        return True
+
+    def fake_evaluate_answer(
+        question,
+        answer,
+        route,
+        evidence,
+        research_judgement=None,
+        research_unavailable=False,
+    ):
+        captured["assessment"] = {
+            "question": question,
+            "answer": answer,
+            "route": route,
+            "evidence": evidence,
+            "research_judgement": research_judgement,
+            "research_unavailable": research_unavailable,
+        }
+
+        return {
+            "verdict": "ACCEPT",
+            "issues": [],
+            "correction": "",
+            "reason": "The answer is correct.",
+        }
+
+    monkeypatch.setattr(
+        question,
+        "should_assess",
+        fake_should_assess,
+        raising=False,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_answer",
+        fake_evaluate_answer,
+        raising=False,
+    )
+
+    original_question = "How do I inspect the configuration?"
+
+    result = question.answer_question(original_question)
+
+    assert captured["assessment"] == {
+        "question": original_question,
+        "answer": "Use the terminal to inspect the configuration.",
+        "route": "LLM",
+        "evidence": [],
+        "research_judgement": None,
+        "research_unavailable": False,
+    }
+
+    assert result.answer == (
+        "Use the terminal to inspect the configuration."
+    )
+    assert result.source == "llm"
+    assert result.research_question is None
+
+
+def test_answer_question_revises_answer_when_assessment_requests_it(
+    monkeypatch,
+):
+    prepare_calls = []
+    assessment_calls = []
+
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.LLM,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "should_assess",
+        lambda original_question, selected_route: True,
+    )
+
+    def fake_prepare_answer(*args, **kwargs):
+        prepare_calls.append((args, kwargs))
+
+        if len(prepare_calls) == 1:
+            return "The original answer."
+
+        return "The corrected answer."
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        fake_prepare_answer,
+    )
+
+    def fake_evaluate_answer(**kwargs):
+        assessment_calls.append(kwargs)
+
+        return {
+            "verdict": "REVISE",
+            "issues": ["The original answer is incomplete."],
+            "correction": (
+                "Explain that the command only displays the "
+                "configuration; it does not change it."
+            ),
+            "reason": "The answer needs clarification.",
+        }
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_answer",
+        fake_evaluate_answer,
+    )
+
+    original_question = "How do I inspect the configuration?"
+
+    result = question.answer_question(original_question)
+
+    assert len(prepare_calls) == 2
+    assert len(assessment_calls) == 1
+
+    assert prepare_calls[1][1]["assessment_correction"] == (
+        "Explain that the command only displays the "
+        "configuration; it does not change it."
+    )
+
+    assert result.answer == "The corrected answer."
+    assert result.source == "llm"
+
+
+def test_answer_question_researches_when_assessment_requests_it(monkeypatch):
+    captured = {}
+
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.LLM,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "should_assess",
+        lambda original_question, selected_route: True,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        lambda *args, **kwargs: "The original answer.",
+    )
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_answer",
+        lambda **kwargs: {
+            "verdict": "RESEARCH",
+            "issues": ["A technical detail needs verification."],
+            "correction": "Check whether the command is supported on Linux.",
+            "reason": "The answer contains an unverified technical claim.",
+        },
+    )
+
+    def fake_research_answer(
+        original_question,
+        research_query,
+        verbose,
+        report,
+        fallback_answer=None,
+    ):
+        captured["original_question"] = original_question
+        captured["research_query"] = research_query
+        captured["fallback_answer"] = fallback_answer
+
+        return question.QuestionResult(
+            answer="The research-supported answer.",
+            source="web",
+            research_question="Interpreted research query",
+        )
+
+    monkeypatch.setattr(
+        question,
+        "research_answer",
+        fake_research_answer,
+    )
+
+    original_question = "How do I inspect the configuration?"
+
+    result = question.answer_question(original_question)
+
+    assert captured["original_question"] == original_question
+    assert original_question in captured["research_query"]
+    assert "Check whether the command is supported on Linux." in (
+        captured["research_query"]
+    )
+    assert captured["fallback_answer"] == "The original answer."
+
+    assert result.answer == "The research-supported answer."
+    assert result.source == "web"
+    assert result.research_question == "Interpreted research query"
+
+
+def test_research_answer_retains_original_when_research_fails(monkeypatch):
+    monkeypatch.setattr(
+        question,
+        "interpret_question",
+        lambda query: query,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "research_web",
+        lambda query: [],
+    )
+
+    def unexpected_prepare_answer(*args, **kwargs):
+        raise AssertionError(
+            "A fallback answer should not be generated."
+        )
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        unexpected_prepare_answer,
+    )
+
+    result = question.research_answer(
+        original_question="How do I inspect the configuration?",
+        research_query="Check whether this command is supported.",
+        verbose=False,
+        report=lambda message: None,
+        fallback_answer="The original answer.",
+    )
+
+    assert "The original answer." in result.answer
+    assert "could not verify" in result.answer.lower()
+    assert "unverified" in result.answer.lower()
+    assert result.source == "llm"
+
+
+def test_answer_question_qualifies_unresolved_answer(monkeypatch):
+    monkeypatch.setattr(
+        question,
+        "route",
+        lambda question: Route.LLM,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "should_assess",
+        lambda original_question, selected_route: True,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        lambda *args, **kwargs: "The original answer.",
+    )
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_answer",
+        lambda **kwargs: {
+            "verdict": "UNRESOLVED",
+            "issues": ["A key detail could not be verified."],
+            "correction": "",
+            "reason": "There is insufficient evidence to establish reliability.",
+        },
+    )
+
+    result = question.answer_question(
+        "How do I inspect the configuration?"
+    )
+
+    assert "The original answer." in result.answer
+    assert "could not establish" in result.answer.lower()
+    assert "reliab" in result.answer.lower()
+    assert result.source == "llm"
 
 
 def make_news_items():

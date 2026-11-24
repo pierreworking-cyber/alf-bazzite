@@ -1,64 +1,73 @@
-"""
-Question classification for ALF's answer router.
 
-This module uses the local language model to classify a user's question
-into one of ALF's routing categories. The resulting category determines
-which part of ALF is responsible for answering the question.
+"""
+Classify questions for ALF's answer router.
+
+The classifier selects the information source needed to answer a
+question. It does not decide whether a user should be given knowledge
+or infer the user's motivation.
 """
 
 from . import llm
 from .routes import Route
 
+
 EXAMPLES = [
+    # Actual computer information
     ("What operating system am I running?", Route.SYSTEM),
-    ("What OS is this machine running?", Route.SYSTEM),
-    ("What GPU is in this computer?", Route.SYSTEM),
+    ("What GPU is installed in this computer?", Route.SYSTEM),
+    ("How much RAM does this machine have?", Route.SYSTEM),
+    (
+        "What operating system am I running, and how do I replace it?",
+        Route.SYSTEM,
+    ),
+
+    # Previous conversations and stored memories
     ("What did we decide about SearXNG?", Route.MEMORY),
     ("What did I ask you to remember about ALF?", Route.MEMORY),
-    ("What have we previously decided about the project?", Route.MEMORY),
+    ("What have we previously decided about this project?", Route.MEMORY),
+
+    # External or current facts
     ("What is the latest version of Python?", Route.RESEARCH),
     ("Who is the current Prime Minister of the UK?", Route.RESEARCH),
     ("What is the weather forecast for tomorrow?", Route.RESEARCH),
     ("Who wrote The Moon's a Balloon?", Route.RESEARCH),
-    ("Who invented the telephone?", Route.RESEARCH),
     ("When was Python first released?", Route.RESEARCH),
+
+    # Questions and tasks answerable locally
     ("What does pytest -q mean?", Route.LLM),
-    ("What is the difference between a list and a tuple in Python?", Route.LLM),
-    ("What does a Python virtual environment do?", Route.LLM),
-    ("Can ALF physically repair my computer?", Route.DECLINE),
+    ("Explain the difference between a list and a tuple.", Route.LLM),
+    ("How do I delete my operating system?", Route.LLM),
+    ("Write a short thank-you note.", Route.LLM),
+    ("Translate hello into French.", Route.LLM),
+    ("Reply with exactly one word: OK", Route.LLM),
+
+    # Capabilities ALF does not possess
     ("Can you make me a cup of tea?", Route.DECLINE),
-    ("How do I delete my operating system?", Route.DECLINE),
-    ("What operating system am I running, and how do I delete it?", Route.DECLINE),
+    ("Can you physically repair my computer?", Route.DECLINE),
 ]
 
 
 def classify(question):
     """
-    Classify a question into one of ALF's routing categories.
-
-    The local language model is given the question and a set of
-    representative examples, then asked to return exactly one routing
-    category. The result is converted to a ``Route`` value so that the
-    router can dispatch the question deterministically.
+    Select the route best suited to answering a user's question.
 
     Args:
-        question: The user's question to classify.
+        question: The user's question or request.
 
     Returns:
-        The ``Route`` corresponding to the classified question.
+        A Route value.
 
     Raises:
-        ValueError: If the language model returns a value that is not a
-            recognised routing category.
+        ValueError: If the language model returns an unknown route.
     """
 
     examples = "\n".join(
-        f"{example_question} -> {route.value}"
-        for example_question, route in EXAMPLES
+        f"{text} -> {route.value}"
+        for text, route in EXAMPLES
     )
 
     prompt = f"""
-Classify the user's question into exactly one of these categories:
+Choose exactly one route for the user's request:
 
 system
 memory
@@ -66,33 +75,65 @@ research
 llm
 decline
 
-SYSTEM means the question requires information about this computer.
+ROUTES
 
-MEMORY means the question asks about something Peter and ALF previously
-remembered, discussed, or decided.
+SYSTEM:
+The answer requires information about this actual computer,
+such as its operating system, hardware or configuration.
 
-RESEARCH means the question asks for a factual answer that should be
-verified against an external source, including facts about people,
-books, films, music, events, dates, places, or current developments.
+MEMORY:
+The answer requires recalling previous conversations or stored
+information about the user or their projects.
 
-LLM means the question is explanatory or conceptual and can be answered
-without external verification.
-DECLINE means ALF has no suitable capability or reliable source.
+RESEARCH:
+The answer requires current facts or verification from external
+sources.
 
-Use the examples below as guidance.
+LLM:
+The request can be answered using local knowledge and reasoning.
+Includes explanations, technical instructions, calculations,
+writing, translation and ordinary conversation.
 
-Examples:
+DECLINE:
+The request requires ALF to physically perform an action or use
+a capability it does not possess.
+
+RULES
+
+1. Classify by the information needed to answer, not by keywords.
+2. Mentioning a computer or operating system does not automatically
+   mean SYSTEM.
+3. General technical instructions belong to LLM, even when they
+   describe destructive operations. ALF provides knowledge; the
+   user decides what to do with it.
+4. Use SYSTEM when answering requires facts about this actual machine.
+   This takes precedence over LLM when a request combines both.
+5. Use MEMORY when answering requires previous conversations.
+6. Use RESEARCH when answering requires external or current facts.
+7. Use DECLINE only when ALF genuinely lacks the capability required.
+8. Do not infer harmful motivation or refuse ordinary requests
+   merely because of their subject matter.
+
+EXAMPLES
+
 {examples}
 
-Return exactly one category name and nothing else.
+Return only the route name.
 
-User's question:
+USER'S REQUEST:
 {question}
 """
 
-    result = llm.generate(prompt).strip().lower()
+    result = llm.generate(
+        prompt,
+        think=False,
+        options={"num_predict": 16},
+    ).strip().lower()
 
     try:
         return Route(result)
     except ValueError as error:
-        raise ValueError(f"Invalid routing classification: {result}") from error
+        raise ValueError(
+            f"Invalid routing classification: {result}"
+        ) from error
+

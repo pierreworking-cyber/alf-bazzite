@@ -241,3 +241,28 @@ def test_prepare_answer_defaults_research_fields(monkeypatch):
 
     assert captured["request"]["research_judgement"] is None
     assert captured["request"]["research_unavailable"] is False
+
+
+def test_prepare_answer_passes_assessment_correction(monkeypatch):
+    captured = {}
+
+    def fake_ask(answer_request):
+        captured["request"] = answer_request
+        return "revised answer"
+
+    monkeypatch.setattr(answer, "ask", fake_ask)
+
+    correction = (
+        "Explain that the command only displays the configuration; "
+        "it does not change it."
+    )
+
+    result = answer.prepare_answer(
+        "How do I inspect the configuration?",
+        "How do I inspect the configuration?",
+        [],
+        assessment_correction=correction,
+    )
+
+    assert result == "revised answer"
+    assert captured["request"]["assessment_correction"] == correction

@@ -4,6 +4,67 @@ from alf import llm
 
 MODEL = llm.OLLAMA_MODEL
 
+def test_generate_preserves_default_payload(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            pass
+
+        def read(self):
+            return json.dumps({"response": "OK"}).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(llm, "urlopen", fake_urlopen)
+
+    result = llm.generate("Return OK.")
+
+    assert result == "OK"
+    assert captured["payload"] == {
+        "model": MODEL,
+        "prompt": "Return OK.",
+        "stream": False,
+    }
+    assert captured["timeout"] == 180
+
+
+def test_generate_accepts_task_specific_options(monkeypatch):
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            pass
+
+        def read(self):
+            return json.dumps({"response": "system"}).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr(llm, "urlopen", fake_urlopen)
+
+    result = llm.generate(
+        "Classify this question.",
+        think=False,
+        options={"num_predict": 16},
+    )
+
+    assert result == "system"
+    assert captured["payload"]["think"] is False
+    assert captured["payload"]["options"] == {"num_predict": 16}
+
+
 def test_generate_json_requests_json_format(monkeypatch):
     captured = {}
 
@@ -232,6 +293,7 @@ def test_ask_requires_answers_to_stay_within_evidence(monkeypatch):
                     "content": "ALF should use evidence rather than guesses.",
                 }
             ],
+            "evidence_type": "research",
         }
     )
 
@@ -267,6 +329,7 @@ def test_ask_includes_research_judgement(monkeypatch):
             "research_judgement": (
                 "The evidence strongly supports the conclusion."
             ),
+            "evidence_type": "research",
         }
     )
 
@@ -280,6 +343,72 @@ def test_ask_includes_research_judgement(monkeypatch):
         in captured["prompt"]
     )
     assert result == "The supported answer."
+
+
+def test_ask_uses_memory_as_context_without_restricting_general_knowledge(
+    monkeypatch,
+):
+    captured = {}
+
+    def fake_generate(prompt):
+        captured["prompt"] = prompt
+        return "A memory-based answer."
+
+    monkeypatch.setattr(llm, "generate", fake_generate)
+
+    result = llm.ask(
+        {
+            "question": "What did we decide about ALF?",
+            "evidence": [
+                {
+                    "source": "memory",
+                    "content": "ALF should prioritise correctness over speed.",
+                }
+            ],
+            "evidence_type": "memory",
+        }
+    )
+
+    assert "retrieved memories from previous conversations" in (
+        captured["prompt"]
+    )
+    assert "Use it as the source for claims" in captured["prompt"]
+    assert "Do not invent missing details" in captured["prompt"]
+    assert "You may use general knowledge" in captured["prompt"]
+    assert result == "A memory-based answer."
+
+
+def test_ask_uses_system_information_as_context(monkeypatch):
+    captured = {}
+
+    def fake_generate(prompt):
+        captured["prompt"] = prompt
+        return "A system-aware answer."
+
+    monkeypatch.setattr(llm, "generate", fake_generate)
+
+    result = llm.ask(
+        {
+            "question": "How can I make better use of my GPU?",
+            "evidence": [
+                {
+                    "source": "system",
+                    "content": "GPU: AMD Radeon RX 9070.",
+                }
+            ],
+            "evidence_type": "system",
+        }
+    )
+
+    assert "actual computer on which ALF is running" in (
+        captured["prompt"]
+    )
+    assert "Treat those machine details as factual context" in (
+        captured["prompt"]
+    )
+    assert "general knowledge and reasoning" in captured["prompt"]
+    assert "Do not invent machine details" in captured["prompt"]
+    assert result == "A system-aware answer."
 
 
 def test_ask_allows_general_knowledge_when_research_unavailable(monkeypatch):
@@ -336,6 +465,7 @@ def test_ask_allows_general_knowledge_for_ordinary_questions(monkeypatch):
     )
 
     assert result == "An ordinary answer."
+
 
 def test_ask_uses_detailed_style_when_verbose(monkeypatch):
     captured = {}
@@ -557,3 +687,44 @@ def test_evaluate_research_rejects_invalid_response(monkeypatch):
         assert str(error) == "Invalid research evaluation response"
     else:
         raise AssertionError("Expected ValueError")
+
+
+def test_ask_includes_assessment_correction_without_weakening_evidence_rules(
+    monkeypatch,
+):
+    captured = {}
+
+    def fake_generate(prompt):
+        captured["prompt"] = prompt
+        return "The revised answer."
+
+    monkeypatch.setattr(llm, "generate", fake_generate)
+
+    correction = (
+        "Explain that the command only displays the configuration; "
+        "it does not change it."
+    )
+
+    result = llm.ask(
+        {
+            "question": "How do I inspect the configuration?",
+            "evidence": [
+                {
+                    "source": "web",
+                    "content": "The command displays the configuration.",
+                }
+            ],
+            "evidence_type": "research",
+            "assessment_correction": correction,
+        }
+    )
+
+    assert correction in captured["prompt"]
+    assert "Answer using only the supplied research evidence." in (
+        captured["prompt"]
+    )
+    assert "Do not fill gaps with your own knowledge." in (
+        captured["prompt"]
+    )
+    assert result == "The revised answer."
+

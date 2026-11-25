@@ -251,7 +251,7 @@ Answer style:
 {answer_style}
 """
 
-    return generate(prompt)
+    return generate(prompt, think=False)
 
 def evaluate_answer(
     question,

@@ -274,7 +274,7 @@ def test_ask_handles_no_research(monkeypatch):
 def test_ask_requires_answers_to_stay_within_evidence(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "I don't have enough evidence to answer that."
 
@@ -311,7 +311,7 @@ def test_ask_requires_answers_to_stay_within_evidence(monkeypatch):
 def test_ask_includes_research_judgement(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "The supported answer."
 
@@ -350,7 +350,7 @@ def test_ask_uses_memory_as_context_without_restricting_general_knowledge(
 ):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "A memory-based answer."
 
@@ -381,7 +381,7 @@ def test_ask_uses_memory_as_context_without_restricting_general_knowledge(
 def test_ask_uses_system_information_as_context(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "A system-aware answer."
 
@@ -414,7 +414,7 @@ def test_ask_uses_system_information_as_context(monkeypatch):
 def test_ask_allows_general_knowledge_when_research_unavailable(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "A knowledge-based answer."
 
@@ -442,7 +442,7 @@ def test_ask_allows_general_knowledge_when_research_unavailable(monkeypatch):
 def test_ask_allows_general_knowledge_for_ordinary_questions(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "An ordinary answer."
 
@@ -470,7 +470,7 @@ def test_ask_allows_general_knowledge_for_ordinary_questions(monkeypatch):
 def test_ask_uses_detailed_style_when_verbose(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "A detailed answer."
 
@@ -499,8 +499,9 @@ def test_ask_uses_detailed_style_when_verbose(monkeypatch):
 def test_ask_uses_concise_style_when_not_verbose(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
+        captured["kwargs"] = kwargs
         return "A concise answer."
 
     monkeypatch.setattr(
@@ -519,13 +520,14 @@ def test_ask_uses_concise_style_when_not_verbose(monkeypatch):
 
     assert "Give a concise but useful answer." in captured["prompt"]
     assert "Do not add unnecessary detail." in captured["prompt"]
+    assert captured["kwargs"]["think"] is False
     assert result == "A concise answer."
 
 
 def test_evaluate_research_includes_source_provenance(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return json.dumps(
             {
@@ -694,7 +696,7 @@ def test_ask_includes_assessment_correction_without_weakening_evidence_rules(
 ):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "The revised answer."
 

@@ -4,7 +4,7 @@ from alf import interpretation
 def test_interpret_question_returns_llm_response(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return (
             "Why are trailing commas commonly used in multi-line "
@@ -39,7 +39,7 @@ def test_interpret_question_returns_llm_response(monkeypatch):
 def test_interpret_question_allows_already_suitable_question(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "What are microbes?"
 
@@ -72,7 +72,7 @@ def test_interpret_question_allows_already_suitable_question(monkeypatch):
 def test_interpret_question_preserves_searchable_question(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "What is the difference between a Python tuple and a list?"
 
@@ -93,7 +93,7 @@ def test_interpret_question_preserves_searchable_question(monkeypatch):
 def test_interpret_question_does_not_answer_question(monkeypatch):
     captured = {}
 
-    def fake_generate(prompt):
+    def fake_generate(prompt, **kwargs):
         captured["prompt"] = prompt
         return "What is the difference between a Python tuple and a list?"
 

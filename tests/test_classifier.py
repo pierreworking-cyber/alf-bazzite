@@ -76,3 +76,68 @@ def test_classification_prompt_contains_safety_examples(monkeypatch):
         "What operating system am I running, and how do I delete it?"
         in captured["prompt"]
     )
+
+def test_temporal_question_forces_research(monkeypatch):
+    monkeypatch.setattr(
+        "alf.classifier.llm.generate",
+        lambda prompt, **kwargs: "llm",
+    )
+
+    assert classify(
+        "Does the current Ollama API support disabling thinking?"
+    ) == Route.RESEARCH
+
+
+def test_latest_question_forces_research(monkeypatch):
+    monkeypatch.setattr(
+        "alf.classifier.llm.generate",
+        lambda prompt, **kwargs: "llm",
+    )
+
+    assert classify(
+        "What is the latest version of Python?"
+    ) == Route.RESEARCH
+
+
+def test_temporal_question_overrides_decline(monkeypatch):
+    monkeypatch.setattr(
+        "alf.classifier.llm.generate",
+        lambda prompt, **kwargs: "decline",
+    )
+
+    assert classify(
+        "Can you tell me the current UK inflation rate?"
+    ) == Route.RESEARCH
+
+
+def test_current_system_question_preserves_system_route(monkeypatch):
+    monkeypatch.setattr(
+        "alf.classifier.llm.generate",
+        lambda prompt, **kwargs: "system",
+    )
+
+    assert classify(
+        "What is my current IP address?"
+    ) == Route.SYSTEM
+
+
+def test_current_memory_question_preserves_memory_route(monkeypatch):
+    monkeypatch.setattr(
+        "alf.classifier.llm.generate",
+        lambda prompt, **kwargs: "memory",
+    )
+
+    assert classify(
+        "What is our current agreed approach to ALF?"
+    ) == Route.MEMORY
+
+
+def test_non_temporal_question_keeps_llm_route(monkeypatch):
+    monkeypatch.setattr(
+        "alf.classifier.llm.generate",
+        lambda prompt, **kwargs: "llm",
+    )
+
+    assert classify(
+        "How does Python virtual environment activation work?"
+    ) == Route.LLM

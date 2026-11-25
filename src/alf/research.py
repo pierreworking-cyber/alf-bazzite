@@ -98,13 +98,18 @@ class LiteResultParser(HTMLParser):
                 self.current.get("title", "") + data
             ).strip()
 
+
 def prepare_search_query(question):
     """Prepare a concise search query from a research question."""
 
-    matches = re.findall(r'"([^"]+)"', question)
+    match = re.match(
+        r'^\s*who\s+wrote\s+"([^"]+)"\??\s*$',
+        question,
+        re.IGNORECASE,
+    )
 
-    if matches:
-        return matches[0]
+    if match:
+        return match.group(1)
 
     match = re.match(
         r"^\s*who\s+wrote\s+(.+?)\??\s*$",
@@ -199,8 +204,8 @@ def search_web(question):
     parsers = []
 
     for url, parser_class in (
-        (DDG_HTML_URL, ResultParser),
         (DDG_LITE_URL, LiteResultParser),
+        (DDG_HTML_URL, ResultParser),
     ):
         try:
             text = fetch_search_page(url, question)
@@ -409,35 +414,36 @@ def build_source_diverse_pool(ranked_passages):
 def research(question, timings=None):
     """Retrieve and rank web evidence for a question."""
 
-    if timings is None:
-        timings = {}
-
-    start = time.perf_counter()
+    start = time.perf_counter() if timings is not None else None
     results = search_web(question)
-    timings["search"] = time.perf_counter() - start
+    if timings is not None:
+        timings["search"] = time.perf_counter() - start
 
-    start = time.perf_counter()
+    start = time.perf_counter() if timings is not None else None
     documents = build_documents(results)
-    timings["fetch_extract"] = time.perf_counter() - start
+    if timings is not None:
+        timings["fetch_extract"] = time.perf_counter() - start
 
-    start = time.perf_counter()
+    start = time.perf_counter() if timings is not None else None
     ranked_passages = rank_passages(
         question,
         documents,
     )
-    timings["ranking"] = time.perf_counter() - start
+    if timings is not None:
+        timings["ranking"] = time.perf_counter() - start
 
-    start = time.perf_counter()
+    start = time.perf_counter() if timings is not None else None
     selected = build_source_diverse_pool(ranked_passages)
-    timings["diversity"] = time.perf_counter() - start
+    if timings is not None:
+        timings["diversity"] = time.perf_counter() - start
 
     return selected
 
 
-def research_web(question):
+def research_web(question, timings=None):
     """Search the web and return a small evidence set for evaluation."""
 
-    return research(question)
+    return research(question, timings=timings)
 
 
 def evaluate_evidence(question, candidates):
@@ -496,7 +502,47 @@ Important distinctions:
 - Prefer primary or official sources where appropriate.
 - Prefer authoritative specialist sources over general-interest
   websites.
-- Prefer explicit dates over vague or undated claims.
+- For technical questions, identify the exact scope of each claim,
+  including the API, endpoint, model, software version, configuration
+  and operating conditions involved.
+- Do not treat evidence about one API endpoint as evidence about
+  another endpoint, even when both belong to the same product.
+- Assess each candidate against the specific claim it is being used
+  to support, not merely against the overall research question.
+- Before accepting technical evidence, compare the endpoint,
+  model, version and configuration described by the source with
+  those specified in the claim.
+- If a source concerns a different endpoint, it must not support
+  a claim about the requested endpoint. It may be retained as a
+  narrowly scoped related observation, but its different scope
+  must be made explicit.
+- Do not infer that a limitation exists on one endpoint merely
+  because it has been reported on another endpoint.
+- Do not infer that other models or variants are unaffected merely
+  because a problem has only been reported for one model.
+- Where the evidence establishes general API support but does not
+  establish all model-specific behaviour, state those conclusions
+  separately.
+- Distinguish documented API behaviour from observed behaviour,
+  individual bug reports, feature requests and user experiences.
+- An individual bug report can establish that a particular problem
+  was reported in a particular context. It does not, by itself,
+  establish general behaviour or a limitation affecting all models
+  or versions.
+- Do not generalise a finding about one model or model variant to
+  an entire model family without supporting evidence.
+- Prefer current official documentation for documented API behaviour,
+  while checking whether it actually covers the endpoint and version
+  asked about. Official documentation for a related feature is not
+  necessarily evidence for the specific behaviour in question.
+- Consider publication dates and software versions when assessing
+  whether technical evidence remains applicable.
+- Distinguish what a source explicitly establishes from what can
+  reasonably be inferred from it. Do not present an inference as
+  documented fact.
+- One authoritative primary source can be sufficient when it directly
+  establishes the claim. Do not require multiple sources merely to
+  increase the source count. Prefer explicit dates over vague or undated claims.
 - Pay attention to whether a source is describing historical
   scholarship rather than presenting that scholarship as current fact.
 - Do not promote a claim merely because several low-quality sources
@@ -514,6 +560,23 @@ For every supporting candidate, it should be possible to explain why
 that candidate provides reliable evidence for the answer, rather than
 merely evidence that a claim exists.
 
+Classify every candidate into exactly one category:
+
+- Supporting: directly and reliably supports a claim in the answer.
+- Related: relevant to the question but insufficient to establish a claim.
+- Rejected: irrelevant, misleading, or unsuitable evidence.
+
+Do not classify a candidate as supporting merely because it is relevant.
+
+Important:
+If evidence establishes only a general capability, but does not establish
+the specific endpoint and model asked about, classify it as Related,
+not Supporting.
+
+An unverified example is not reliable confirmation.
+A report about a different endpoint is not evidence that the same
+behaviour occurs on the endpoint being asked about.
+
 Return JSON only:
 
 {{
@@ -521,6 +584,7 @@ Return JSON only:
     "confidence": "high|medium|low",
     "supporting_candidates": [1, 2],
     "rejected_candidates": [3],
+    "related_candidates": [3],
     "reason": "brief explanation of why the selected evidence "
               "is reliable and why rejected or weaker claims were not used"
 }}

@@ -182,13 +182,23 @@ def test_evaluate_answer_uses_research_evidence_rules(monkeypatch):
         research_judgement="The official documentation supports this claim.",
     )
 
-    assert "exclusively against the accepted research evidence" in (
-        captured["prompt"]
-    )
-    assert "Official documentation" in captured["prompt"]
-    assert "The official documentation supports this claim." in (
-        captured["prompt"]
-    )
+    prompt = captured["prompt"]
+
+    assert "provisional interpretation" in prompt
+    assert "not an authoritative conclusion" in prompt
+    assert "API" in prompt
+    assert "precise scope of technical claims" in prompt
+    assert "endpoint" in prompt
+    assert "model" in prompt
+    assert "software version" in prompt
+    assert "individual reports" in prompt
+    assert "Do not generalise" in prompt
+    assert "overstate, misinterpret or contradict" in prompt
+    assert "Do not use general knowledge to fill evidential gaps" in prompt
+    assert "single authoritative primary source" in prompt
+
+    assert "Official documentation" in prompt
+    assert "The official documentation supports this claim." in prompt
 
 
 def test_evaluate_answer_uses_memory_evidence_rules(monkeypatch):

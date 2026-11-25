@@ -67,6 +67,15 @@ def test_prepare_search_query_extracts_subject_of_who_wrote_question():
     assert research.prepare_search_query(question) == "the moon's a balloon"
 
 
+def test_prepare_search_query_preserves_quoted_technical_parameter():
+    question = (
+        'Does Ollama\'s current /api/generate API support '
+        'disabling thinking for Qwen3 models using "think": false?'
+    )
+
+    assert research.prepare_search_query(question) == question
+
+
 def test_split_into_passages():
     text = "one two three four five"
 
@@ -146,8 +155,8 @@ def test_search_web_uses_lite_when_html_is_challenged(monkeypatch):
     result = research.search_web("something useful")
 
     assert requested_urls == [
-        research.DDG_HTML_URL,
         research.DDG_LITE_URL,
+        research.DDG_HTML_URL,
     ]
 
     assert result == [
@@ -218,13 +227,30 @@ def test_evaluate_evidence_passes_candidates_to_generate_json(monkeypatch):
         candidates,
     )
 
-    assert "Who wrote The Moon's a Balloon?" in captured["prompt"]
-    assert "Candidate 1" in captured["prompt"]
-    assert "example.org" in captured["prompt"]
-    assert "David Niven wrote The Moon's a Balloon." in captured["prompt"]
-    assert "supporting_candidates" in captured["prompt"]
-    assert result["answer"] == "David Niven wrote the book."
+    prompt = captured["prompt"]
 
+    assert "Who wrote The Moon's a Balloon?" in prompt
+    assert "Candidate 1" in prompt
+    assert "example.org" in prompt
+    assert "David Niven wrote The Moon's a Balloon." in prompt
+    assert "supporting_candidates" in prompt
+    assert "exact scope" in prompt
+    assert "API" in prompt
+    assert "endpoint" in prompt
+    assert "specific claim it is being used" in prompt
+    assert "to support, not merely against the overall research question" in prompt
+    assert "different endpoint" in prompt
+    assert "Do not infer that a limitation exists on one endpoint" in prompt
+    assert "Do not infer that other models or variants are unaffected" in prompt
+    assert "state those conclusions" in prompt
+    assert "separately." in prompt
+    assert "model" in prompt
+    assert "software version" in prompt
+    assert "individual bug reports" in prompt
+    assert "Do not generalise" in prompt
+    assert "One authoritative primary source can be sufficient" in prompt
+
+    assert result["answer"] == "David Niven wrote the book."
 
 def test_evaluate_evidence_returns_generate_json_result_unchanged(monkeypatch):
     expected = {
@@ -244,6 +270,59 @@ def test_evaluate_evidence_returns_generate_json_result_unchanged(monkeypatch):
     result = research.evaluate_evidence("A question?", [])
 
     assert result is expected
+
+
+def test_evidence_selection_excludes_different_api_endpoint():
+    candidates = [
+        {
+            "title": "Official Ollama API documentation",
+            "domain": "ollama.com",
+            "text": (
+                "The /api/generate endpoint supports "
+                "the think parameter."
+            ),
+        },
+        {
+            "title": "Qwen3 reasoning bug report",
+            "domain": "github.com",
+            "text": (
+                "think: false does not suppress reasoning "
+                "through the /api/chat endpoint for qwen3:4b."
+            ),
+        },
+    ]
+
+    evaluation = {
+        "supporting_candidates": [1],
+        "rejected_candidates": [2],
+    }
+
+    selected = research.select_evidence(
+        candidates,
+        evaluation,
+    )
+
+    assert selected == [candidates[0]]
+
+
+def test_select_evidence_excludes_related_candidates():
+    candidates = [
+        {"title": "Direct supporting source"},
+        {"title": "Related but inconclusive source"},
+    ]
+
+    evaluation = {
+        "supporting_candidates": [1],
+        "related_candidates": [2],
+        "rejected_candidates": [],
+    }
+
+    selected = research.select_evidence(
+        candidates,
+        evaluation,
+    )
+
+    assert selected == [candidates[0]]
 
 
 def test_select_evidence_returns_selected_candidates():

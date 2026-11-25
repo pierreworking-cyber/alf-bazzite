@@ -133,19 +133,19 @@ def test_answer_question_uses_general_knowledge_when_no_research_is_found(
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.RESEARCH,
+        lambda question, timings=None: Route.RESEARCH,
     )
 
     monkeypatch.setattr(
         question,
         "interpret_question",
-        lambda question: question,
+        lambda question, timings=None: question,
     )
 
     monkeypatch.setattr(
         question,
         "research_web",
-        lambda question: [],
+        lambda question, timings=None: [],
     )
 
     captured = {}
@@ -200,6 +200,7 @@ def test_answer_question_passes_selected_research_evidence(
         "answer": "Both sources support the answer.",
         "confidence": "high",
         "supporting_candidates": [1, 2],
+        "related_candidates": [],
         "rejected_candidates": [],
         "reason": "Both sources provide direct support.",
     }
@@ -207,19 +208,19 @@ def test_answer_question_passes_selected_research_evidence(
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.RESEARCH,
+        lambda question, timings=None: Route.RESEARCH,
     )
 
     monkeypatch.setattr(
         question,
         "interpret_question",
-        lambda question: question,
+        lambda question, timings=None: question,
     )
 
     monkeypatch.setattr(
         question,
         "research_web",
-        lambda question: candidates,
+        lambda question, timings=None: candidates,
     )
 
     monkeypatch.setattr(
@@ -279,6 +280,7 @@ def test_answer_question_falls_back_when_research_confidence_is_low(
         "answer": "A tentative conclusion.",
         "confidence": "low",
         "supporting_candidates": [1],
+        "related_candidates": [],
         "rejected_candidates": [],
         "reason": "The evidence is inconclusive.",
     }
@@ -286,19 +288,19 @@ def test_answer_question_falls_back_when_research_confidence_is_low(
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.RESEARCH,
+        lambda question, timings=None: Route.RESEARCH,
     )
 
     monkeypatch.setattr(
         question,
         "interpret_question",
-        lambda question: question,
+        lambda question, timings=None: question,
     )
 
     monkeypatch.setattr(
         question,
         "research_web",
-        lambda question: candidates,
+        lambda question, timings=None: candidates,
     )
 
     monkeypatch.setattr(
@@ -354,19 +356,19 @@ def test_answer_question_falls_back_when_evidence_evaluation_fails(
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.RESEARCH,
+        lambda question, timings=None: Route.RESEARCH,
     )
 
     monkeypatch.setattr(
         question,
         "interpret_question",
-        lambda question: question,
+        lambda question, timings=None: question,
     )
 
     monkeypatch.setattr(
         question,
         "research_web",
-        lambda question: candidates,
+        lambda question, timings=None: candidates,
     )
 
     def failed_evaluation(question, candidates):
@@ -416,19 +418,19 @@ def test_answer_question_does_not_retry_when_fallback_answering_fails(
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.RESEARCH,
+        lambda question, timings=None: Route.RESEARCH,
     )
 
     monkeypatch.setattr(
         question,
         "interpret_question",
-        lambda question: question,
+        lambda question, timings=None: question,
     )
 
     monkeypatch.setattr(
         question,
         "research_web",
-        lambda question: [],
+        lambda question, timings=None: [],
     )
 
     calls = 0
@@ -464,7 +466,7 @@ def test_answer_question_uses_system_information(monkeypatch):
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.SYSTEM,
+        lambda question, timings=None: Route.SYSTEM,
     )
 
     monkeypatch.setattr(
@@ -527,13 +529,13 @@ def test_answer_question_uses_memory_when_relevant(monkeypatch):
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.MEMORY,
+        lambda question, timings=None: Route.MEMORY,
     )
 
     monkeypatch.setattr(
         question,
         "find_relevant_memories",
-        lambda question: memories,
+        lambda question, timings=None: memories,
     )
 
     captured = {}
@@ -587,13 +589,13 @@ def test_answer_question_admits_when_no_memory_matches(monkeypatch):
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.MEMORY,
+        lambda question, timings=None: Route.MEMORY,
     )
 
     monkeypatch.setattr(
         question,
         "find_relevant_memories",
-        lambda question: [],
+        lambda question, timings=None: [],
     )
 
     monkeypatch.setattr(
@@ -620,13 +622,13 @@ def test_answer_question_declines_unsupported_question(monkeypatch):
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.DECLINE,
+        lambda question, timings=None: Route.DECLINE,
     )
 
     monkeypatch.setattr(
         question,
         "interpret_question",
-        lambda question: pytest.fail(
+        lambda question, timings=None: pytest.fail(
             "Declined questions must not be interpreted"
         ),
     )
@@ -634,7 +636,7 @@ def test_answer_question_declines_unsupported_question(monkeypatch):
     monkeypatch.setattr(
         question,
         "research_web",
-        lambda question: pytest.fail(
+        lambda question, timings=None: pytest.fail(
             "Declined questions must not research the web"
         ),
     )
@@ -662,7 +664,7 @@ def test_answer_question_assesses_substantial_llm_answer(monkeypatch):
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.LLM,
+        lambda question, timings=None: Route.LLM,
     )
 
     monkeypatch.setattr(
@@ -743,7 +745,7 @@ def test_answer_question_revises_answer_when_assessment_requests_it(
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.LLM,
+        lambda question, timings=None: Route.LLM,
     )
 
     monkeypatch.setattr(
@@ -825,7 +827,7 @@ def test_answer_question_handles_second_assessment_verdict(
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.LLM,
+        lambda question, timings=None: Route.LLM,
     )
     monkeypatch.setattr(
         question,
@@ -929,7 +931,7 @@ def test_answer_question_researches_when_assessment_requests_it(monkeypatch):
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.LLM,
+        lambda question, timings=None: Route.LLM,
     )
 
     monkeypatch.setattr(
@@ -994,17 +996,260 @@ def test_answer_question_researches_when_assessment_requests_it(monkeypatch):
     assert result.research_question == "Interpreted research query"
 
 
-def test_research_answer_retains_original_when_research_fails(monkeypatch):
+@pytest.mark.parametrize(
+    ("verdict", "expected_warning", "expected_calls"),
+    [
+        ("ACCEPT", False, 1),
+        ("REVISE", True, 2),
+        ("RESEARCH", True, 2),
+        ("UNRESOLVED", True, 1),
+    ],
+)
+def test_research_answer_assesses_generated_answer(
+    monkeypatch,
+    verdict,
+    expected_warning,
+    expected_calls,
+):
+    candidate = {
+        "title": "Official documentation",
+        "url": "https://example.org/docs",
+        "text": "The documentation supports the answer.",
+    }
+
+    evaluation = {
+        "answer": "The documentation supports the answer.",
+        "confidence": "high",
+        "supporting_candidates": [1],
+        "related_candidates": [],
+        "rejected_candidates": [],
+        "reason": "The source directly supports the conclusion.",
+    }
+
+    assessment_calls = []
+
     monkeypatch.setattr(
         question,
         "interpret_question",
-        lambda query: query,
+        lambda query, timings=None: query,
     )
 
     monkeypatch.setattr(
         question,
         "research_web",
-        lambda query: [],
+        lambda query, timings=None: [candidate],
+    )
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_evidence",
+        lambda query, candidates: evaluation,
+    )
+
+    prepared_answers = []
+
+    def fake_prepare_answer(*args, **kwargs):
+        prepared_answers.append(kwargs)
+
+        if len(prepared_answers) == 1:
+            return "The generated research answer."
+
+        return "The revised research answer."
+
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        fake_prepare_answer,
+    )
+
+
+    def fake_evaluate_answer(**kwargs):
+        assessment_calls.append(kwargs)
+        return {
+            "verdict": verdict,
+            "issues": ["A test issue."] if expected_warning else [],
+            "correction": "A test correction." if expected_warning else "",
+            "reason": "The test assessment.",
+        }
+
+    monkeypatch.setattr(
+        question,
+        "evaluate_answer",
+        fake_evaluate_answer,
+    )
+
+    result = question.research_answer(
+        original_question="What does the documentation establish?",
+        research_query="What does the documentation establish?",
+        verbose=False,
+        report=lambda message: None,
+    )
+
+    assert len(assessment_calls) == expected_calls
+
+    if verdict == "REVISE":
+        assert assessment_calls[1]["answer"] == (
+            "The revised research answer."
+        )
+        assert prepared_answers[1]["assessment_correction"] == (
+            "A test correction."
+        )
+
+    assessment = assessment_calls[0]
+
+    assert assessment["question"] == (
+        "What does the documentation establish?"
+    )
+    assert assessment["answer"] == "The generated research answer."
+    assert assessment["route"] == "RESEARCH"
+    assert assessment["evidence"] == [candidate]
+    assert assessment["research_unavailable"] is False
+
+    expected_answer = (
+        "The revised research answer."
+        if verdict in ("REVISE", "RESEARCH")
+        else "The generated research answer."
+    )
+
+    assert result.answer.startswith(expected_answer)
+    assert result.source == "web"
+
+    if expected_warning:
+        assert "could not establish" in result.answer.lower()
+        assert "A test correction." in result.answer
+    else:
+        assert result.answer == "The generated research answer."
+
+
+def test_research_answer_performs_only_one_follow_up_research(
+    monkeypatch,
+):
+    candidate = {
+        "title": "Official documentation",
+        "url": "https://example.org/docs",
+        "text": "The documentation supports the answer.",
+    }
+
+    evaluation = {
+        "answer": "The documentation supports the answer.",
+        "confidence": "high",
+        "supporting_candidates": [1],
+        "related_candidates": [],
+        "rejected_candidates": [],
+        "reason": "The source directly supports the conclusion.",
+    }
+
+    interpreted_queries = []
+    searched_queries = []
+    prepared_answers = []
+    assessment_calls = []
+
+    def fake_interpret_question(query, timings=None):
+        interpreted_queries.append(query)
+        return query
+
+    def fake_research_web(query, timings=None):
+        searched_queries.append(query)
+        return [candidate]
+
+    def fake_prepare_answer(*args, **kwargs):
+        prepared_answers.append(kwargs)
+
+        if len(prepared_answers) == 1:
+            return "The first research answer."
+
+        return "The second research answer."
+
+    assessment_verdicts = ["RESEARCH", "RESEARCH"]
+
+    def fake_evaluate_answer(**kwargs):
+        assessment_calls.append(kwargs)
+
+        verdict = assessment_verdicts[len(assessment_calls) - 1]
+
+        return {
+            "verdict": verdict,
+            "issues": ["A remaining test issue."],
+            "correction": "Check the exact API endpoint and model support.",
+            "reason": "Further verification is required.",
+        }
+
+    monkeypatch.setattr(
+        question,
+        "interpret_question",
+        fake_interpret_question,
+    )
+    monkeypatch.setattr(
+        question,
+        "research_web",
+        fake_research_web,
+    )
+    monkeypatch.setattr(
+        question,
+        "evaluate_evidence",
+        lambda query, candidates: evaluation,
+    )
+    monkeypatch.setattr(
+        question,
+        "prepare_answer",
+        fake_prepare_answer,
+    )
+    monkeypatch.setattr(
+        question,
+        "evaluate_answer",
+        fake_evaluate_answer,
+    )
+
+    original_question = "Does the API support disabling thinking?"
+
+    result = question.research_answer(
+        original_question=original_question,
+        research_query=original_question,
+        verbose=False,
+        report=lambda message: None,
+    )
+
+    assert len(interpreted_queries) == 2
+    assert len(searched_queries) == 2
+    assert len(prepared_answers) == 2
+    assert len(assessment_calls) == 2
+
+    assert interpreted_queries[0] == original_question
+
+    assert "Check the exact API endpoint and model support." in (
+        interpreted_queries[1]
+    )
+
+    assert searched_queries[1] == interpreted_queries[1]
+
+    assert assessment_calls[0]["answer"] == (
+        "The first research answer."
+    )
+    assert assessment_calls[1]["answer"] == (
+        "The second research answer."
+    )
+
+    assert result.answer.startswith("The second research answer.")
+    assert "even after an additional research attempt" in (
+        result.answer.lower()
+    )
+    assert "Check the exact API endpoint and model support." in (
+        result.answer
+    )
+    assert result.source == "web"
+
+
+def test_research_answer_retains_original_when_research_fails(monkeypatch):
+    monkeypatch.setattr(
+        question,
+        "interpret_question",
+        lambda query, timings=None: query,
+    )
+
+    monkeypatch.setattr(
+        question,
+        "research_web",
+        lambda query, timings=None: [],
     )
 
     def unexpected_prepare_answer(*args, **kwargs):
@@ -1036,7 +1281,7 @@ def test_answer_question_qualifies_unresolved_answer(monkeypatch):
     monkeypatch.setattr(
         question,
         "route",
-        lambda question: Route.LLM,
+        lambda question, timings=None: Route.LLM,
     )
 
     monkeypatch.setattr(

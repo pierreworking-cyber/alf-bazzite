@@ -7,6 +7,7 @@ question. It does not decide whether a user should be given knowledge
 or infer the user's motivation.
 """
 
+import re
 from . import llm
 from .routes import Route
 
@@ -45,6 +46,31 @@ EXAMPLES = [
     ("Can you make me a cup of tea?", Route.DECLINE),
     ("Can you physically repair my computer?", Route.DECLINE),
 ]
+
+TEMPORAL_PATTERNS = (
+    r"\bcurrent(?:ly)?\b",
+    r"\blatest\b",
+    r"\bnewest\b",
+    r"\brecent(?:ly)?\b",
+    r"\btoday\b",
+    r"\btonight\b",
+    r"\byesterday\b",
+    r"\btomorrow\b",
+    r"\bright now\b",
+    r"\bas of now\b",
+    r"\bat present\b",
+    r"\bup[\s-]+to[\s-]+date\b",
+    r"\bthis (?:morning|afternoon|evening|week|month|year)\b",
+    r"\bin the last \d+ (?:hours?|days?|weeks?|months?|years?)\b",
+)
+
+
+def has_temporal_sensitivity(question):
+    """Return whether a question explicitly requires time-sensitive information."""
+    return any(
+        re.search(pattern, question, re.IGNORECASE)
+        for pattern in TEMPORAL_PATTERNS
+    )
 
 
 def classify(question):
@@ -131,9 +157,16 @@ USER'S REQUEST:
     ).strip().lower()
 
     try:
-        return Route(result)
+        route = Route(result)
     except ValueError as error:
         raise ValueError(
             f"Invalid routing classification: {result}"
         ) from error
 
+    if (
+        has_temporal_sensitivity(question)
+        and route not in (Route.SYSTEM, Route.MEMORY)
+    ):
+        return Route.RESEARCH
+
+    return route
